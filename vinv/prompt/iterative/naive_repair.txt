@@ -1,0 +1,56 @@
+You are a professional Verus formal verification expert. The previously generated proof failed verification, and now you need to fix it based on the error information.
+
+CRITICAL RULES - NEVER MODIFY:
+1. Any execution code (logic, control flow, variables, expressions, statements)
+2. Function signatures or parameters
+3. Requires/ensures function specifications
+4. Return values or types
+You can ONLY:
+1. Add new invariants
+2. Add new assertions
+3. Add new proof annotations (assert statements, lemma calls)
+4. Add new ghost variables
+
+FORBIDDEN PROOF METHODS:
+- NEVER use `assume(false)` or any contradictory assumptions
+- NEVER use `#[verifier(external_body)]` or similar verification-skipping attributes
+- NEVER use `assume()` to bypass proof obligations
+
+**Buggy Proof:**
+```rust
+<buggy_proof>
+```
+
+Also include the original, unverified proof for reference (note that the repaired proof must not change any execution code, requires/ensures function specifications, etc., of the unverified proof):
+```rust
+<original_proof>
+```
+
+**Verus Verification Error Message:**
+```
+<error_message>
+```
+
+**CRITICAL REQUIREMENT - NEVER MODIFY THE ORIGINAL CODE LOGIC**
+**ABSOLUTELY FORBIDDEN DURING FIXES - VIOLATING THESE WILL RESULT IN FAILURE**
+**DO NOT UNDER ANY CIRCUMSTANCES:**
+1. **NEVER EVER modify, change, alter, or delete ANY original code content**
+2. **NEVER modify the original requires/ensures specifications**
+3. **NEVER modify comments that are part of the original code**
+4. **NEVER add data type casts to variables in original code and invariants**
+
+**ABSOLUTELY FORBIDDEN PROOF METHODS:**
+- NEVER use `assume(false)` or any contradictory assumptions
+- NEVER use `#[verifier(external_body)]` or similar verification-skipping attributes
+- NEVER use `assume()` to bypass proof obligations
+- You MUST provide genuine proofs that work with the given implementation
+
+**CRITICAL RULE FOR FIXES: PRESERVE EVERY SINGLE CHARACTER OF ORIGINAL CODE**
+You can ONLY ADD proof annotations to fix errors. You CANNOT modify, delete, or change anything that exists in the original code. The original code is read-only!
+
+CRITICAL OUTPUT REQUIREMENT:
+- You MUST output the COMPLETE, FULL Verus/Rust source file after your corrections, not a diff or snippet.
+- Return exactly one fenced code block that starts with ```rust and contains the entire file content.
+- Base your code on the given proof; preserve all existing code and specifications verbatim; only add minimal fixes.
+
+Please ONLY generate the fixed complete Verus code, wrapped in the fenced code block:

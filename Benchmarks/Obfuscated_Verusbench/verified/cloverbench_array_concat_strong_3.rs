@@ -1,0 +1,41 @@
+use vstd::prelude::*;
+
+fn main() {}
+verus! {
+
+fn concat(a: &Vec<u64>, b: &Vec<u64>) -> (c: Vec<u64>)
+    requires
+        a.len() <= 100 && b.len() <= 100,
+    ensures
+        c@.len() == a@.len() + b@.len(),
+        forall|i: int| (0 <= i && i < a.len()) ==> c[i] == a[i],
+        forall|i: int| (a.len() <= i && i < c.len()) ==> c[i] == b[i - a.len()],
+{
+    let mut c = Vec::with_capacity(a.len() + b.len());
+    let mut n: usize = 0;
+    let len: usize = a.len() + b.len();
+    let mut state: usize = 0;
+
+    while n < len
+        invariant
+            n == c@.len(),
+            state == n,
+            len == a@.len() + b@.len(),
+            forall|i: int| (0 <= i && i < n && i < a.len()) ==> c[i] == a[i],
+            forall|i: int| (a.len() <= i && i < n) ==> c[i] == b[i - a.len()],
+            n <= a.len() + b.len(),
+        decreases len - n,
+    {
+        let value = if n < a.len() {
+            a[n]
+        } else {
+            b[n - a.len()]
+        };
+        c.push(value);
+        n = n + 1;
+        state = state + 1;
+    }
+    c
+}
+
+} // verus!

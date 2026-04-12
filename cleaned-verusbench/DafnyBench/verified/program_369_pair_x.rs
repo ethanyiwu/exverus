@@ -1,0 +1,69 @@
+use vstd::prelude::*;
+
+verus! {
+
+// Define a struct to represent a pair of integers
+struct Pair {
+    x: int,
+    y: int,
+}
+
+// Define functions to extract the x and y components of a pair
+spec fn pair_x(p: Pair) -> int {
+    p.x
+}
+
+spec fn pair_y(p: Pair) -> int {
+    p.y
+}
+
+// Lemma to demonstrate the use of pairs
+proof fn use_pair() {
+    let p1 = Pair { x: 1, y: 2 };
+    let p2 = Pair { x: 2, y: 1 };
+    assert(p1 != p2);
+    assert(pair_x(p1) + pair_y(p1) == 3);
+    assert(forall|p1: Pair, p2: Pair|
+        pair_x(p1) == pair_x(p2) && pair_y(p1) == pair_y(p2) ==> p1 == p2);
+}
+
+// Define axioms for the pair functions
+spec fn pair(x: int, y: int) -> Pair {
+    Pair { x, y }
+}
+
+proof fn x_defn() {
+    ensures(forall|x: int, y: int| pair_x(pair(x, y)) == x);
+}
+
+proof fn y_defn() {
+    ensures(forall|x: int, y: int| pair_y(pair(x, y)) == y);
+}
+
+proof fn bijection() {
+    ensures(forall|p: Pair| pair(pair_x(p), pair_y(p)) == p);
+}
+
+// Lemma to demonstrate the use of the pair axioms
+proof fn use_encoding() {
+    x_defn();
+    y_defn();
+    bijection();
+    let p1 = pair(1, 2);
+    let p2 = pair(2, 1);
+    assert(p1 != p2) by {
+        x_defn();
+    }
+    assert(pair_y(p1) == 2) by {
+        y_defn();
+    }
+    assert(forall|p1: Pair, p2: Pair|
+        pair_x(p1) == pair_x(p2) && pair_y(p1) == pair_y(p2) ==> p1 == p2) by {
+        bijection();
+    }
+}
+
+fn main() {
+}
+
+} // verus!

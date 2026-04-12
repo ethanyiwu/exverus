@@ -1,0 +1,23 @@
+use vstd::prelude::*;
+
+verus! {
+
+# [doc = " Adds two natural numbers by incrementing the first number."]
+fn add_by_inc(x: u64, y: u64) -> (z: u64)
+    requires
+        x + y < u64::MAX,
+        y < u64::MAX / 2,
+    ensures
+        z == x + y,
+{
+    let mut z = x;
+    let mut i = 0;
+    while i < y && z < u64::MAX - 1 {
+        z = z + 1;
+        i = i + 1;
+    }
+    z
+}
+
+
+}

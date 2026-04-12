@@ -1,0 +1,17 @@
+{
+    "models": [
+        "gpt-4o",
+        "deepseek-chat-v3.1",
+        "qwen3-coder",
+        "o4-mini"
+    ],
+    "benchmarks": [
+        "CLEANED_VB",
+        "ADDITIONAL"
+    ],
+    "techniques": [
+        "cex_repair_z3_mut_val_10",
+        "cex_repair_z3_simple_10",
+        "iterative_repair_naive"
+    ]
+}

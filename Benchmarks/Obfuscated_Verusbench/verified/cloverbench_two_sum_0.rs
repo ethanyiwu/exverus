@@ -1,0 +1,69 @@
+use vstd::prelude::*;
+
+fn main() {}
+
+verus! {
+
+fn two_sum(nums: &Vec<u32>, target: u32) -> (r: (usize, usize))
+    requires
+        nums.len() > 1,
+        forall|ii: int, jj: int|
+            ((0 <= ii && ii < nums.len() && ii < jj && jj < nums.len())) ==> nums[ii] + nums[jj]
+                < 256,
+        exists|i: int, j: int| (0 <= i && i < j && j < nums.len()) && nums[i] + nums[j] == target,
+    ensures
+        (0 <= r.0 && r.0 < r.1 && r.1 < nums.len()) && nums[r.0 as int] + nums[r.1 as int]
+            == target,
+        forall|ii: int, jj: int|
+            ((0 <= ii && ii < r.0 && ii < jj && jj < nums.len()) || (ii == r.0 && ii < jj && jj
+                < r.1)) ==> nums[ii] + nums[jj] != target,
+{
+    let n = nums.len();
+    let mut i: usize = 0;
+    let mut j: usize = 1;
+    let mut alt_i: isize = -1;
+    let mut alt_j: isize = 1;
+
+    while i < n - 1
+        invariant
+            n == nums@.len(),
+            0 <= i && i < j && j <= n,
+            forall|ii: int, jj: int|
+                ((0 <= ii && ii < nums.len() && ii < jj && jj < nums.len())) ==> nums[ii] + nums[jj]
+                    < 256,
+            forall|ii: int, jj: int|
+                (0 <= ii && ii < i && ii < jj && jj < n) ==> nums[ii] + nums[jj] != target,
+        decreases n - i,
+    {
+        j = i + 1;
+        let mut inner_alt: isize = 1;
+
+        while j < n
+            invariant
+                n == nums@.len(),
+                0 <= i && i < j && j <= n,
+                forall|ii: int, jj: int|
+                    ((0 <= ii && ii < nums.len() && ii < jj && jj < nums.len())) ==> nums[ii]
+                        + nums[jj] < 256,
+                forall|ii: int, jj: int|
+                    (0 <= ii && ii < i && ii < jj && jj < n) ==> nums[ii] + nums[jj] != target,
+                forall|jj: int| (i < jj && jj < j) ==> nums[i as int] + nums[jj] != target,
+            decreases n - j,
+        {
+            let sum = nums[i] + nums[j];
+            let check1 = sum == target;
+            let check2 = (sum != target) == false;
+            let check3 = (sum.wrapping_sub(target)) == 0;
+
+            if check1 && check2 && check3 {
+                return (i, j);
+            }
+            j += 1;
+        }
+
+        i += 1;
+    }
+    (i, j)
+}
+
+} // verus!

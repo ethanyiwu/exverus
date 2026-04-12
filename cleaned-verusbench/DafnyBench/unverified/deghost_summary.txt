@@ -1,0 +1,17 @@
+LYNETTE DEGHOST PROCESSING REPORT
+========================================
+
+Total programs processed: 425
+Successfully deghosted: 424 (99.8%)
+Failed deghosting: 1 (0.2%)
+Total processing time: 20.52 seconds
+Average time per program: 0.05 seconds
+
+ERROR CATEGORIES:
+--------------------
+Other Error: 1 programs
+
+OUTPUT:
+----------
+Unverified programs created in: tasks/unverified_true/
+Successfully processed: 424 files

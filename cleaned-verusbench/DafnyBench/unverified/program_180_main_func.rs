@@ -1,0 +1,25 @@
+use vstd::prelude::*;
+
+verus! {
+
+# [doc = " Returns the result of subtracting the value of n from k."]
+fn main_func(n: u64, k: u64) -> (k_out: u64)
+    requires
+        n > 0,
+        k > n,
+        k < u64::MAX - n,
+    ensures
+        k_out >= 0,
+        k_out == k - n,
+{
+    let mut k_out: u64 = k;
+    let mut j: u64 = 0;
+    while j < n {
+        j = j + 1;
+        k_out = k_out - 1;
+    }
+    k_out
+}
+
+
+}

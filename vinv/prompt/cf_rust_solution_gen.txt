@@ -1,0 +1,21 @@
+You are given the following coding problem. Please generate a Rust solution program that solves it.
+	•	The solution should read input from stdin (e.g., ./solution < public_tests_001.in) and print output to stdout.
+    •   Wrap the generated solution within ```rust\n<solution>\n``` code block.
+	•	Ideally, the generated solution should be verifiable by tools like Verus. To make that possible, please follow the constraints below.
+
+Guidelines for Verus-Friendly Code
+	1.	Write a purely functional solution: the output must depend only on the input; avoid global variables, randomness, or side effects.
+	2.	Avoid complex or opaque standard library functions unless they are simple and could be mirrored in a spec fn.
+	3.	Use basic data types like u32, u64, and Vec<T> with clear ownership. Avoid shared references, aliasing, raw pointers, or unsafe code.
+	4.	Avoid floating-point types (f32, f64) and any arithmetic that requires reasoning over real numbers.
+	5.	Ensure all arithmetic is safe from overflow/underflow. If needed, add preconditions (e.g., requires) to constrain input ranges.
+	6.	Structure the main logic as a single loop or recursion with a clear decreasing measure and inductive reasoning structure.
+	7.	Avoid break and continue. Use while or for loops with a clean structure so loop invariants can be applied effectively.
+	8.	Prefer accumulating results over a prefix of the input (e.g., 0..index) to support inductive invariants.
+	9.	Include a clean spec fn that declaratively defines the correct output in terms of the input, using Seq<T> when appropriate.
+	10.	Avoid complex heap-based data structures (e.g., linked lists, trees, graphs) unless they can be modeled with simple arrays or slices.
+	11.	Ensure the function is total: no panics, early exits, or unhandled branches — every input should yield a valid output.
+	12.	No need to optimize for performance; focus on clarity, structure, and verifiability above runtime efficiency.
+
+Problem Statement:
+<problem_statement>

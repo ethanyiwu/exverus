@@ -1,0 +1,38 @@
+[package]
+name = "convert-assume-syn"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "convert_assume_syn"
+path = "convert_assume_syn.rs"
+
+[dependencies]
+verus_syn = { version = "0.0.0-2025-08-12-1837", features = ["full", "visit", "fold"] }
+quote = "1"
+proc-macro2 = "1"
+regex = "1"
+syn = { version = "2", features = ["full"] }
+
+[[bin]]
+name = "inject_cex"
+path = "inject_cex.rs"
+
+[[bin]]
+name = "extract_loop_syn"
+path = "extract_loop_syn.rs"
+
+[[bin]]
+name = "inject_cex_extracted"
+path = "inject_cex_extracted.rs"
+
+[[bin]]
+name = "read_loop_id_syn"
+path = "read_loop_id_syn.rs"
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.serde_json]
+version = "1"

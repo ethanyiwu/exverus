@@ -1,0 +1,24 @@
+use vstd::prelude::*;
+
+verus! {
+
+fn linear_search(a: &[int], key: int) -> (n: usize)
+    requires
+        a.len() < 100000,
+        a.len() < i32::MAX as usize,
+    ensures
+        0 <= n && n <= a.len(),
+        n == a.len() || a[n as int] == key,
+{
+    let mut n: usize = 0;
+    while n < a.len() {
+        if a[n] == key {
+            return n;
+        }
+        n = n + 1;
+    }
+    n
+}
+
+
+}

@@ -1,0 +1,43 @@
+Given the following proof and counter example, please help me fix the verification failure by correcting or adding invariants.
+
+CRITICAL RULES - NEVER MODIFY:
+1. Any execution code (logic, control flow, variables, expressions, statements)
+2. Function signatures or parameters
+3. Requires/ensures function specifications
+4. Return values or types
+5. NEVER use data type casts (e.g., `i as usize`, `i as int`) in loop invariants
+
+You can ONLY:
+1. Add new invariants
+2. Add new assertions
+3. Add new proof annotations (assert statements, lemma calls)
+4. Add new ghost variables
+
+Proof:
+<proof_content>
+
+Also include the original, unverified proof for reference (note that the repaired proof must not change any execution code, requires/ensures function specifications, etc., of the unverified proof):
+<original_proof>
+
+Also include a unified diff showing the delta between the original unverified proof and the current proof under analysis. Use this diff to identify unintended edits to executable code or specifications:
+<diff>
+
+Counter Example:
+<counter_example>
+
+Error Type: <error_type>
+<error_guidance>
+
+Please:
+1. Analyze why the verification failed using the counter example
+2. Identify which invariants are incorrect or missing
+3. Provide a complete fixed version of the proof that:
+   - Corrects any wrong invariants
+   - Adds any missing invariants
+   - Ensures the specific counter example is blocked
+   - Blocks similar counter examples that would fail for the same reason
+   - Maintains correctness for valid program states
+
+Return the complete fixed proof in a code block, preserving all existing requires/ensures clauses and adding necessary invariants.
+
+Note: The fixed proof should be a complete, self-contained Rust file that can be directly verified by Verus.
