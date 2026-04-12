@@ -3,9 +3,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Literal, Tuple
 
-from lynette import lynette
-from utils_inter import split_code_by_func
-
 from vinv.config import (
     ADDITIONAL_BENCHMARK_ROOT_DIR,
     ADDITIONAL_BENCHMARK_UNVERIFIED_ENTRY_POINTS,
@@ -21,7 +18,40 @@ from vinv.config import (
 from vinv.invariant import InvariantEntry
 from vinv.specification import SpecificationEntry
 from vinv.utils import check_status
-from vinv.verus_utils import get_verus_result
+
+
+def _split_code_by_func(code: str) -> tuple[list[int], list[int], list[str]]:
+    interval_start: list[int] = []
+    interval_end: list[int] = []
+    lines = code.split("\n")
+    total_line = len(lines)
+    prefixes = (
+        "fn ",
+        "pub fn ",
+        "proof fn ",
+        "pub proof fn ",
+        "spec fn ",
+        "pub spec fn ",
+    )
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped.startswith(prefixes):
+            continue
+        interval_start.append(i)
+        if stripped.endswith("{}"):
+            interval_end.append(i)
+            continue
+
+        indent = len(line) - len(line.lstrip())
+        for j in range(i + 1, total_line):
+            next_line = lines[j]
+            next_indent = len(next_line) - len(next_line.lstrip())
+            if next_indent == indent and next_line.strip().startswith("}"):
+                interval_end.append(j)
+                break
+        else:
+            interval_end.append(total_line)
+    return interval_start, interval_end, []
 
 
 class FuncType(Enum):
@@ -103,23 +133,14 @@ class ProofFile:
         )
 
     def contains_invariant(self) -> bool:
-        # if not self.verified:
-        #     return False
-
-        with open(self.path, "r") as file:
-            content = file.read()
-
-        # scaffolding
-        if "invariant" in content:
+        if "invariant" in self.code:
             assert (
-                "while" in content or "for" in content or "loop" in content
+                "while" in self.code or "for" in self.code or "loop" in self.code
             ), f"loop not found in {self.path}"
-        return "invariant" in content
+        return "invariant" in self.code
 
     def _split_code_by_func(self):
-        with open(self.path, "r") as file:
-            content = file.read()
-        return split_code_by_func(content, None, tofile=False)
+        return _split_code_by_func(self.code)
 
     def _get_func_code(self, func_start: int, func_end: int) -> str:
         func_lines = self.code_lines[func_start - 1 : func_end]
@@ -308,6 +329,8 @@ class ProofFile:
         if not self.verified:
             raise ValueError(f"Cannot run Verus on unverified file {self.path}")
 
+        from vinv.verus_utils import get_verus_result
+
         return get_verus_result(self.path, use_old_verus=use_old_verus)
 
     def deghostify(
@@ -326,6 +349,8 @@ class ProofFile:
         """
         if not self.verified:
             raise ValueError(f"Cannot deghostify unverified file {self.path}")
+
+        from lynette import lynette
 
         with tempfile.TemporaryDirectory() as temp_dir:
             Path(temp_dir).mkdir(parents=True, exist_ok=True)

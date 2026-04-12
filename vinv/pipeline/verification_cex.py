@@ -17,7 +17,7 @@ from typing import Dict, List, Optional, Tuple
 from loguru import logger
 
 from vinv.gen.client import request_conversation_one
-from vinv.pipeline.assume.run_convert_assume import convert_rust_file_to_string
+from vinv.pipeline.assume.run_convert_assume_syn import convert_rust_file_to_string
 from vinv.pipeline.counter_example import CounterExample
 from vinv.pipeline.z3_utils import run_z3_script_with_timeout
 from vinv.utils import extract_python_code_block

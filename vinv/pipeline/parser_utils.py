@@ -4,10 +4,9 @@ from __future__ import annotations
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from loguru import logger
-from veval import VerusError, VerusErrorType
 
 from vinv.config import ROOT_DIR
 
@@ -32,7 +31,12 @@ def find_or_build_rs_convert_bin(binary_name: str) -> Path:
     return debug_bin
 
 
-def get_target_line_from_error(verus_error: VerusError) -> Optional[int]:
+def _is_inv_fail_front(verus_error: Any) -> bool:
+    error = getattr(verus_error, "error", None)
+    return getattr(error, "name", "") == "InvFailFront" or str(error) == "InvFailFront"
+
+
+def get_target_line_from_error(verus_error: Any) -> Optional[int]:
     """Infer the target source line from a VerusError's trace/spans."""
     target_trace = verus_error.trace[-1]
     assert (
@@ -42,7 +46,7 @@ def get_target_line_from_error(verus_error: VerusError) -> Optional[int]:
 
 
 def extract_loop_for_error(
-    proof_file: Path, verus_error: VerusError, out_path: Path
+    proof_file: Path, verus_error: Any, out_path: Path
 ) -> bool:
     """Run extract_loop_syn on proof_file for the error's target line into out_path.
 
@@ -56,7 +60,7 @@ def extract_loop_for_error(
     bin_path = find_or_build_rs_convert_bin("extract_loop_syn")
     mode = (
         "check_base_case"
-        if verus_error.error == VerusErrorType.InvFailFront
+        if _is_inv_fail_front(verus_error)
         else "check_inductiveness"
     )
 
@@ -78,7 +82,7 @@ def extract_loop_for_id(
     fn_name: str,
     loop_index: int,
     out_path: Path,
-    verus_error: VerusError,
+    verus_error: Any,
 ) -> bool:
     """Run extract_loop_syn on proof_file for a specific function and loop index.
 
@@ -90,7 +94,7 @@ def extract_loop_for_id(
         bin_path = find_or_build_rs_convert_bin("extract_loop_syn")
         mode = (
             "check_base_case"
-            if verus_error.error == VerusErrorType.InvFailFront
+            if _is_inv_fail_front(verus_error)
             else "check_inductiveness"
         )
         cmd = [
@@ -166,7 +170,7 @@ def _find_verus_block(src: str) -> Optional[Tuple[int, int]]:
     return None
 
 
-def error_inside_loop(proof_file: Path, verus_error: VerusError) -> bool:
+def error_inside_loop(proof_file: Path, verus_error: Any) -> bool:
     """Return True if the target error location is within a loop body.
 
     Uses the existing Rust extractor: if it can extract a loop harness at the

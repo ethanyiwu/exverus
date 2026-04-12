@@ -62,7 +62,7 @@ CEX_MAP_ALT = {
 }
 
 
-@pytest.mark.parametrize("task_name,sample_proof", TASK_CASES, ids=[t for t, _ in TASK_CASES])
+@pytest.mark.parametrize(("task_name", "sample_proof"), TASK_CASES, ids=[t for t, _ in TASK_CASES])
 def test_convert_contains_harness(task_name: str, sample_proof: Path, tmp_path: Path):
     if not sample_proof.exists():
         pytest.skip(f"sample proof not found: {sample_proof}")
@@ -71,14 +71,14 @@ def test_convert_contains_harness(task_name: str, sample_proof: Path, tmp_path: 
     out_path = convert_rust_file_to_file(str(sample_proof), str(artifacts_root))
     converted = Path(out_path).read_text(encoding="utf-8")
     # Basic structural checks
-    assert "_while1" in converted
+    assert re.search(r"_(?:while|loop)1\b", converted) is not None
     # Expect loop-head facts present (allow pretty-printed spacing)
     assert re.search(r"\b(assume|assert)\b", converted) is not None
     # Expect post-body invariant asserts (marker)
     assert "// Invariants after the loop" in converted
 
 
-@pytest.mark.parametrize("task_name,sample_proof", TASK_CASES, ids=[t for t, _ in TASK_CASES])
+@pytest.mark.parametrize(("task_name", "sample_proof"), TASK_CASES, ids=[t for t, _ in TASK_CASES])
 def test_inject_assignment_updates_tuple(task_name: str, sample_proof: Path):
     if not sample_proof.exists():
         pytest.skip(f"sample proof not found: {sample_proof}")
@@ -99,7 +99,7 @@ def test_inject_assignment_updates_tuple(task_name: str, sample_proof: Path):
     assert str(value) in let_line
 
 
-@pytest.mark.parametrize("task_name,sample_proof", TASK_CASES, ids=[t for t, _ in TASK_CASES])
+@pytest.mark.parametrize(("task_name", "sample_proof"), TASK_CASES, ids=[t for t, _ in TASK_CASES])
 def test_inject_assignment_updates_tuple_alt(task_name: str, sample_proof: Path):
     if not sample_proof.exists():
         pytest.skip(f"sample proof not found: {sample_proof}")

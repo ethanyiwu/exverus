@@ -74,16 +74,24 @@ TRAJECTORY_RESULT_FILE = (
 
 AUTOVERUS_ALMOST_CORRECT_RESULTS_DIR = ROOT_DIR / "Benchmarks" / "one-step-dataset"
 VERUS_PATH = shutil.which("verus")
-if VERUS_PATH is None:
-    raise EnvironmentError(
-        "Verus executable not found in PATH. Please ensure Verus is installed and available."
-    )
-
 OLD_VERUS_PATH = os.environ.get("OLD_VERUS_PATH")
-if not OLD_VERUS_PATH:
-    raise EnvironmentError(
-        "OLD_VERUS_PATH environment variable is not set. Please set it to the path of the old Verus executable."
-    )
+
+
+def resolve_verus_path(use_old_verus: bool = False) -> str:
+    if use_old_verus:
+        verus_path = os.environ.get("OLD_VERUS_PATH")
+        if not verus_path:
+            raise EnvironmentError(
+                "OLD_VERUS_PATH environment variable is not set. Please set it to the path of the old Verus executable."
+            )
+        return verus_path
+
+    verus_path = shutil.which("verus")
+    if verus_path is None:
+        raise EnvironmentError(
+            "Verus executable not found in PATH. Please ensure Verus is installed and available."
+        )
+    return verus_path
 
 # Mutant ranking mode configuration
 # - "cex_block": filter out non-compilable candidates, rank by blocked CEXs (default)
@@ -107,7 +115,6 @@ TEST_DRIVER_GEN_STDIN_PROMPT_FILE = (
 TEST_DRIVER_GEN_HARDCODED_PROMPT_FILE = (
     PROMPT_ROOT_DIR / "test_driver" / "driver_gen_hardcoded.txt"
 )
-TEST_DRIVER_GEN_CEX_PROMPT_FILE = PROMPT_ROOT_DIR / "test_driver" / "driver_gen_cex.txt"
 
 REPAIR_WITH_TRACE_PROMPT_FILE = PROMPT_ROOT_DIR / "trace_repair.txt"
 
