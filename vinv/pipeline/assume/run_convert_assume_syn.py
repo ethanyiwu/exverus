@@ -4,7 +4,7 @@ Wrapper to run the Rust-based convert_assume_syn tool (verus_syn parser).
 Creates an 'assume' folder next to the input file by default.
 
 CLI:
-  uv run python run_convert_assume_syn.py /path/to/input.rs [--use-assert] [--out /path/to/dir]
+  uv run vinv assume convert /path/to/input.rs [--use-assert] [--output-dir /path/to/dir]
 
 Programmatic API:
   - convert_rust_file_to_string(input_path, use_assert=False)

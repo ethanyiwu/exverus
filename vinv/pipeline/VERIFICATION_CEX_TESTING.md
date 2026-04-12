@@ -25,6 +25,15 @@ export LYNETTE_PATH=$(pwd)/verus-proof-synthesis/utils/lynette/source/target/deb
 # export OLD_VERUS_PATH=...  # only if your local Verus setup expects it
 ```
 
+### 1.5) Common helper CLI
+
+Use the unified CLI for the common assume/assert utilities:
+
+```bash
+uv run vinv assume convert vinv/pipeline/assume/example_input/example-2.rs --output-dir /tmp/assume_out
+uv run vinv assume validate-cex /tmp/assume_out/example-2.rs --assign i=0 --assign j=1
+```
+
 ### 2) What the verification strategy does
 
 Given an input Rust/Verus file, the strategy:

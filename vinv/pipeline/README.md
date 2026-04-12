@@ -1,46 +1,69 @@
 # Pipeline for proof generation/repair
-## Input and output
-input: an unverified proof
 
-output: a fixed proof
+The project now exposes a single CLI entrypoint:
+
+```bash
+uv sync
+uv run vinv --help
+```
+
+## Main commands
+
+Run the full repair pipeline:
+
+```bash
+uv run vinv pipeline run --model deepseek-chat --source CLEANED_VB --run-all
+```
+
+Run the one-step repair pipeline:
+
+```bash
+uv run vinv pipeline one-step --model gpt-4o --source INJECTED
+```
+
+Convert a proof into assume/assert form:
+
+```bash
+uv run vinv assume convert path/to/input.rs --output-dir path/to/out
+```
+
+Validate a counterexample against converted code:
+
+```bash
+uv run vinv assume validate-cex path/to/converted.rs --assign x=1 --assign y=2
+```
+
+Parse aggregated pipeline results:
+
+```bash
+uv run vinv analysis parse-pipeline results/pipeline/gpt-4o/CLEANED_VB/global_repair_status_z3_mut_val_10.json
+```
+
+Summarize run-level error statistics:
+
+```bash
+uv run vinv analysis run-error-stats results/pipeline/gpt-4o/CLEANED_VB --strategy cex_repair_z3_mut_val_10
+```
+
+Summarize CEX validation behavior:
+
+```bash
+uv run vinv analysis cex-validation-stats results/pipeline/gpt-4o/CLEANED_VB --strategy cex_repair_z3_mut_val_10
+```
+
+Inspect one repaired attempt directory:
+
+```bash
+uv run vinv analysis one-step-cex results/pipeline/gpt-4o/CLEANED_VB/some_task/cex_repair_z3_mut_val_10/gen_0/try_1
+```
 
 ## Key idea
-Using IC3 to incrementally find counter example to induction and refine the proof with the guidance of counter examples.
 
-## Overview
-1. Given a verification error, especially when the error is about invariants, ask the LLM to reason about counter example to induction (not inductive) or counter example (wrong fact), either using z3 solver or direct LLM prompting.
+1. Generate a candidate repair from a failing proof.
+2. Use counterexamples to distinguish weak invariants from wrong invariants.
+3. Generalize useful counterexamples into stronger repairs and iterate.
 
-2. Given the counter example, generalize the counter example to fix or strengthen the invariants.
+## Notes
 
-3. Possibility 1, the invariant is fixed, so we move forward; possibility 2, the invariant is not fixed (still wrong or not inductive), then generating counter example again; possibility 3, compilation error, then iteratively refine.
-
-## Modules
-### Counter example generation
-input:
-
-a buggy proof (with verification errors, saying which invariant does not hold at loop start/end, we focus on one invariant at a time)
-
-output:
-
-1. a verdict on whether the invariant is a wrong fact or a correct but weak and not inductive invariant
-
-2. a concrete counter example (not necessarily concrete value assignments) that may or may not be achievable
-### Counter example generalization
-input:
-
-1. the verdict from the last step
-
-2. the concrete counter example from the last step
-
-output:
-
-refined invariants (fixed or strengthend)
-
-### Iteratively refinement
-input:
-
-updated but still wrong invariants
-
-output:
-
-iteratively fixed invariants
+- The unified CLI is a thin layer over the existing pipeline and analysis modules.
+- Existing module entrypoints still work, but the recommended interface is `uv run vinv ...`.
