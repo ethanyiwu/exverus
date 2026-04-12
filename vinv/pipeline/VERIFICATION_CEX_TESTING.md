@@ -11,10 +11,10 @@ export DEEPSEEK_API_KEY=sk-...            # if using deepseek-* models
 export OPENAI_API_KEY=sk-proj-...         # if using gpt-* models
 ```
 
-- Ensure Python can import the project modules and Vercode tools:
+- Sync the project and ensure Python can import the project modules and Vercode tools:
 
 ```bash
-cd /Users/sun/Desktop/code/GithubLink/verusinv_backup/verusinv
+uv sync
 export PYTHONPATH=verus-proof-synthesis/code:$(pwd)
 ```
 
@@ -44,7 +44,7 @@ Artifacts per attempt are written under a per-file `try_1/` directory (see secti
 The following runs verification CEX on `example-2.rs` using `deepseek-chat` and writes artifacts under `results/pipeline/verification_ds_focus/example-2_deepseekchat/try_1/`.
 
 ```bash
-DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY} OPENAI_API_KEY=${OPENAI_API_KEY} python - <<'PY'
+DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY} OPENAI_API_KEY=${OPENAI_API_KEY} uv run python - <<'PY'
 import json, os, sys, shutil
 from pathlib import Path
 
@@ -102,7 +102,7 @@ Notes:
 This runs the verification CEX on all `.rs` files in `vinv/pipeline/assume/example_input/` with `deepseek-chat`, writing per-file artifacts and a summary JSON.
 
 ```bash
-DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY} OPENAI_API_KEY=${OPENAI_API_KEY} python - <<'PY'
+DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY} OPENAI_API_KEY=${OPENAI_API_KEY} uv run python - <<'PY'
 import os, sys, json, time
 from pathlib import Path
 import shutil

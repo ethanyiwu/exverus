@@ -1,5 +1,7 @@
 .DS_Store
 __pycache__
+.pytest_cache/
+.venv/
 build/
 *.egg-info/
 *.log
@@ -13,6 +15,7 @@ trash/
 .cursorignore
 target/
 *.lock
+!uv.lock
 test_artifacts/
 .tmp_inject_extracted/
 charts/

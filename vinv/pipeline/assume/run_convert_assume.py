@@ -18,7 +18,7 @@ def run_convert_assume(input_path: Path, output_dir: Path, use_assert: bool = Fa
 def main() -> None:
     if len(sys.argv) < 2 or len(sys.argv) > 3:
         raise SystemExit(
-            "Usage: python run_convert_assume.py <input_file_path> [--use-assert]"
+            "Usage: uv run python run_convert_assume.py <input_file_path> [--use-assert]"
         )
     print(convert_rust_file_to_string(sys.argv[1], len(sys.argv) == 3))
 
