@@ -11,7 +11,7 @@ from typing import List, Optional
 from loguru import logger
 from veval import VerusError
 
-from vinv.gen.client import request_conversation_one
+from vinv.gen.client import request_prompt_one
 from vinv.pipeline.counter_example import CounterExample
 from vinv.utils import extract_rs_code_from_response
 
@@ -50,16 +50,13 @@ def simple_cex_generalization(
         prompt_file.write_text(prompt)
 
         # Call LLM
-        messages = [
-            {
-                "role": "system",
-                "content": "You are an expert in Rust/Verus verification. You are given counter example(s) and a proof. You need to fix the proof by strengthening/weakening invariants or assertions.",
-            },
-            {"role": "user", "content": prompt},
-        ]
-
-        response_text = request_conversation_one(
-            messages,
+        response_text = request_prompt_one(
+            prompt,
+            system=(
+                "You are an expert in Rust/Verus verification. You are given "
+                "counter example(s) and a proof. You need to fix the proof by "
+                "strengthening/weakening invariants or assertions."
+            ),
             model=model,
             max_retry=5,
             temperature=1.0,

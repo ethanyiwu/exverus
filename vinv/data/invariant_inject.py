@@ -12,7 +12,7 @@ from veval import VerusErrorType, VEval
 
 from vinv.config import INV_INJECT_RESULTS_DIR
 from vinv.data.cherrypick import get_all_vb_proofs
-from vinv.gen.client import request_conversation_one
+from vinv.gen.client import request_prompt_one
 from vinv.gen.prompt_utils import make_unified_diff
 from vinv.proof import OneStepProofFile, ProofFile
 from vinv.utils import extract_rs_code_from_response
@@ -293,18 +293,16 @@ def run_injection_once(
     prompt_template: str = INJECT_TYPES[inject_type]["prompt"]
     user_prompt = prompt_template.replace("{proof}", original_code)
 
-    msg_list = [
-        {
-            "role": "system",
-            "content": (
-                "You are an expert in Rust and Verus programming. Produce only one minimal mutation to a single invariant; never modify executable code or specifications. Output ONLY a single ```rust``` code block with the full file and NOTHING ELSE (no explanations, no diffs, no extra text). Do not add or modify comments."
-            ),
-        },
-        {"role": "user", "content": user_prompt},
-    ]
-
-    response = request_conversation_one(
-        msg_list,
+    system_prompt = (
+        "You are an expert in Rust and Verus programming. Produce only one "
+        "minimal mutation to a single invariant; never modify executable code "
+        "or specifications. Output ONLY a single ```rust``` code block with "
+        "the full file and NOTHING ELSE (no explanations, no diffs, no extra "
+        "text). Do not add or modify comments."
+    )
+    response = request_prompt_one(
+        user_prompt,
+        system=system_prompt,
         model=model,
         max_retry=5,
         temperature=0.2,
@@ -313,7 +311,14 @@ def run_injection_once(
     )
 
     (out_dir / "conversation.json").write_text(
-        json.dumps(msg_list + [{"role": "assistant", "content": response}], indent=2)
+        json.dumps(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+                {"role": "assistant", "content": response},
+            ],
+            indent=2,
+        )
     )
     (out_dir / "response.txt").write_text(response)
 

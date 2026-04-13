@@ -21,8 +21,8 @@ from veval import EvalScore, VerusError, VEval
 
 from vinv.config import MUT_RANKING_MODE
 from vinv.gen.client import (
-    request_conversation_multi_response,
-    request_conversation_one,
+    request_prompt_multi_response,
+    request_prompt_one,
 )
 from vinv.pipeline.counter_example import CounterExample
 from vinv.pipeline.parser_utils import (
@@ -137,16 +137,9 @@ def mut_val_cex_generalization(
         Note:
         1. When `#[verifier::loop_isolation(false)]` is specified, the loop is not isolated and the invariants/assertions are shared between loops, thus if a correct invariant got "invariant not satisfied before loop" error, maybe some dependent invariant in prior loops is missing and should be added.
         """
-        messages = [
-            {
-                "role": "system",
-                "content": system_prompt,
-            },
-            {"role": "user", "content": base_mut_prompt},
-        ]
-
-        responses = request_conversation_multi_response(
-            messages,
+        responses = request_prompt_multi_response(
+            base_mut_prompt,
+            system=system_prompt,
             model=model,
             max_retry=5,
             temperature=1.0,
@@ -560,18 +553,13 @@ Output strictly as JSON:
 """
 
     (try_dir / "mut_val_verdict_prompt.txt").write_text(prompt)
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are an expert in Rust/Verus verification. Infer classification labels precisely and respond only with the requested JSON."
-            ),
-        },
-        {"role": "user", "content": prompt},
-    ]
-
-    response = request_conversation_one(
-        messages,
+    response = request_prompt_one(
+        prompt,
+        system=(
+            "You are an expert in Rust/Verus verification. Infer "
+            "classification labels precisely and respond only with the "
+            "requested JSON."
+        ),
         model=model,
         max_retry=5,
         temperature=1.0,

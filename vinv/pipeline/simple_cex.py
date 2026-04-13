@@ -15,7 +15,7 @@ from loguru import logger
 from veval import VerusError
 
 # Note: We create our own simple prompt instead of using the complex IC3 prompt
-from vinv.gen.client import request_conversation_one
+from vinv.gen.client import request_prompt_one
 from vinv.pipeline.counter_example import CounterExample
 
 
@@ -49,16 +49,12 @@ def simple_cex_generation(
         prompt_file.write_text(prompt)
 
         # Call LLM
-        messages = [
-            {
-                "role": "system",
-                "content": "You are an expert in Rust/Verus verification. Find concrete counter examples that demonstrate why verification fails.",
-            },
-            {"role": "user", "content": prompt},
-        ]
-
-        response_text = request_conversation_one(
-            messages,
+        response_text = request_prompt_one(
+            prompt,
+            system=(
+                "You are an expert in Rust/Verus verification. Find concrete "
+                "counter examples that demonstrate why verification fails."
+            ),
             model=model,
             max_retry=5,
             temperature=1.0,

@@ -17,7 +17,7 @@ from typing import List, Optional
 from loguru import logger
 from veval import VerusError
 
-from vinv.gen.client import request_conversation_one
+from vinv.gen.client import request_prompt_one
 from vinv.pipeline.counter_example import CounterExample
 from vinv.pipeline.simple_generalization import simple_cex_generalization
 from vinv.pipeline.z3_utils import run_z3_script_with_timeout
@@ -80,20 +80,15 @@ def z3_cex_generalization(
                 )
                 user_prompt = feedback + "\n\n" + base_prompt
 
-            messages = [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are an IC3-style inductive generalization expert and Python Z3 power user. "
-                        "Your job is to produce a Python script (only code) that performs MIC and ctgDown "
-                        "style generalization given a failing proof context, then outputs the final clause via globals."
-                    ),
-                },
-                {"role": "user", "content": user_prompt},
-            ]
-
-            response_text = request_conversation_one(
-                messages,
+            response_text = request_prompt_one(
+                user_prompt,
+                system=(
+                    "You are an IC3-style inductive generalization expert and "
+                    "Python Z3 power user. Your job is to produce a Python "
+                    "script (only code) that performs MIC and ctgDown style "
+                    "generalization given a failing proof context, then outputs "
+                    "the final clause via globals."
+                ),
                 model=model,
                 max_retry=5,
                 temperature=1.0,
@@ -199,19 +194,15 @@ def z3_cex_generalization(
         )
         (try_dir / "z3_genz_injection_prompt.txt").write_text(verus_prompt)
 
-        messages2 = [
-            {
-                "role": "system",
-                "content": (
-                    "You are an expert in Rust/Verus verification. Your task is to repair the proof by strengthening "
-                    "or adjusting loop invariants and/or intermediate assertions using the provided inductive clause. "
-                    "Do not change executable code or requires/ensures specifications."
-                ),
-            },
-            {"role": "user", "content": verus_prompt},
-        ]
-        response_text2 = request_conversation_one(
-            messages2,
+        response_text2 = request_prompt_one(
+            verus_prompt,
+            system=(
+                "You are an expert in Rust/Verus verification. Your task is to "
+                "repair the proof by strengthening or adjusting loop invariants "
+                "and/or intermediate assertions using the provided inductive "
+                "clause. Do not change executable code or requires/ensures "
+                "specifications."
+            ),
             model=model,
             max_retry=5,
             temperature=1.0,

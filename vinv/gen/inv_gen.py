@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from loguru import logger
 
-from vinv.gen.client import request_conversation_one
+from vinv.gen.client import request_prompt_one
 from vinv.gen.prompt_utils import TEST_TRACE_INFO_PROMPT, read_inv_gen_prompt
 from vinv.proof import ProofFile
 
@@ -150,14 +150,13 @@ def mask_and_fill_invariant(
         test_driver_file=test_driver_file,
         test_driver_output_file=test_driver_output_file,
     )
-    response = request_conversation_one(
-        [
-            {
-                "role": "system",
-                "content": "You are an experienced formal language programmer. You are very familiar with Verus, which is a tool for verifying the correctness of code written in Rust.",
-            },
-            {"role": "user", "content": prompt},
-        ],
+    response = request_prompt_one(
+        prompt,
+        system=(
+            "You are an experienced formal language programmer. You are very "
+            "familiar with Verus, which is a tool for verifying the correctness "
+            "of code written in Rust."
+        ),
         model=model,
         temperature=1.0,
         task_id=str(work_dir),

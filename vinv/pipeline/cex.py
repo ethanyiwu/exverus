@@ -5,7 +5,7 @@ from typing import Callable, Dict, List, Literal, Optional, Tuple
 from loguru import logger
 from veval import VerusError, VerusErrorType, VEval
 
-from vinv.gen.client import request_conversation_one
+from vinv.gen.client import request_prompt_one
 from vinv.gen.prompt_utils import make_unified_diff, read_compilation_repair_prompt
 from vinv.pipeline.counter_example import CounterExample, add_validate_status
 from vinv.pipeline.error_priority import sort_errors_by_priority
@@ -62,16 +62,13 @@ def cex_compilation_repair(
         .replace("{error_message}", console_error_msg)
     )
 
-    msg_list = [
-        {
-            "role": "system",
-            "content": "You are an expert in Rust and Verus programming. You fix compilation errors without changing original executable logic or specifications.",
-        },
-        {"role": "user", "content": prompt},
-    ]
-
-    response = request_conversation_one(
-        msg_list,
+    system_prompt = (
+        "You are an expert in Rust and Verus programming. You fix compilation "
+        "errors without changing original executable logic or specifications."
+    )
+    response = request_prompt_one(
+        prompt,
+        system=system_prompt,
         model=model,
         max_retry=5,
         temperature=1.0,
@@ -80,7 +77,14 @@ def cex_compilation_repair(
     )
 
     (try_dir / "conversation.json").write_text(
-        json.dumps(msg_list + [{"role": "assistant", "content": response}], indent=2)
+        json.dumps(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": response},
+            ],
+            indent=2,
+        )
     )
     (try_dir / "response.txt").write_text(response)
 
