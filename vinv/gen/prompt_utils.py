@@ -9,9 +9,6 @@ from vinv.config import (
     COMPILATION_REPAIR_PROMPT_FILE,
     INV_GEN_PLAIN_PROMPT_FILE,
     NAIVE_REPAIR_PROMPT_FILE,
-    OBFUSC_PROMPT_FILE,
-    REPAIR_WITH_TRACE_PROMPT_FILE,
-    SOLUTION_GEN_PROMPT_FILE,
     TEST_DRIVER_GEN_HARDCODED_PROMPT_FILE,
     TEST_DRIVER_GEN_STDIN_PROMPT_FILE,
 )
@@ -35,16 +32,6 @@ def read_inv_gen_prompt(prompt_type: Literal["plain"] = "plain") -> str:
     return _read_prompt({"plain": INV_GEN_PLAIN_PROMPT_FILE}, prompt_type)
 
 
-def read_obfuscation_prompt(prompt_type: Literal["plain"] = "plain") -> str:
-    return _read_prompt({"plain": OBFUSC_PROMPT_FILE}, prompt_type)
-
-
-def read_solution_gen_prompt(
-    prompt_type: Literal["rust_solution_gen"] = "rust_solution_gen",
-) -> str:
-    return _read_prompt({"rust_solution_gen": SOLUTION_GEN_PROMPT_FILE}, prompt_type)
-
-
 def read_test_driver_gen_prompt(
     test_driver_mode: Literal["hardcoded", "stdin"] = "hardcoded",
 ) -> str:
@@ -55,12 +42,6 @@ def read_test_driver_gen_prompt(
         },
         test_driver_mode,
     )
-
-
-def read_repair_with_trace_prompt(
-    prompt_type: Literal["plain"] = "plain",
-) -> str:
-    return _read_prompt({"plain": REPAIR_WITH_TRACE_PROMPT_FILE}, prompt_type)
 
 
 def read_naive_repair_prompt() -> str:

@@ -106,8 +106,6 @@ if mut_ranking_mode not in ALLOWED_MUT_RANKING_MODES:
 MUT_RANKING_MODE = mut_ranking_mode
 
 INV_GEN_PLAIN_PROMPT_FILE = PROMPT_ROOT_DIR / "inv_gen_plain.txt"
-SOLUTION_GEN_PROMPT_FILE = PROMPT_ROOT_DIR / "cf_rust_solution_gen.txt"
-OBFUSC_PROMPT_FILE = PROMPT_ROOT_DIR / "obfuscate_plain.txt"
 
 TEST_DRIVER_GEN_STDIN_PROMPT_FILE = (
     PROMPT_ROOT_DIR / "test_driver" / "driver_gen_stdin.txt"
@@ -115,8 +113,6 @@ TEST_DRIVER_GEN_STDIN_PROMPT_FILE = (
 TEST_DRIVER_GEN_HARDCODED_PROMPT_FILE = (
     PROMPT_ROOT_DIR / "test_driver" / "driver_gen_hardcoded.txt"
 )
-
-REPAIR_WITH_TRACE_PROMPT_FILE = PROMPT_ROOT_DIR / "trace_repair.txt"
 
 NAIVE_REPAIR_PROMPT_FILE = PROMPT_ROOT_DIR / "iterative" / "naive_repair.txt"
 
