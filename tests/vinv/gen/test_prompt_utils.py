@@ -1,6 +1,6 @@
 import pytest
 
-from vinv.gen.prompt_utils import count_tokens, read_test_driver_gen_prompt
+from vinv.gen.prompt_utils import count_tokens
 
 
 def test_count_tokens():
@@ -14,13 +14,3 @@ def test_count_tokens():
 def test_count_tokens_rejects_unknown_model():
     with pytest.raises(ValueError):
         count_tokens("hello", model="unknown")
-
-
-def test_read_test_driver_prompt_modes():
-    assert "<raw_program>" in read_test_driver_gen_prompt("hardcoded")
-    assert "<raw_program>" in read_test_driver_gen_prompt("stdin")
-
-
-def test_read_test_driver_prompt_rejects_dead_mode():
-    with pytest.raises(ValueError):
-        read_test_driver_gen_prompt("cex")  # type: ignore[arg-type]

@@ -3,45 +3,13 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Literal
 
 from vinv.config import (
     COMPILATION_REPAIR_PROMPT_FILE,
-    INV_GEN_PLAIN_PROMPT_FILE,
     NAIVE_REPAIR_PROMPT_FILE,
-    TEST_DRIVER_GEN_HARDCODED_PROMPT_FILE,
-    TEST_DRIVER_GEN_STDIN_PROMPT_FILE,
 )
 
 VERUS_SYSTEM_PROMPT = "You are an experienced Rust programmer. You are very familiar with Verus, which is a tool for verifying the correctness of code written in Rust."
-
-TEST_TRACE_INFO_PROMPT = """
-To help you understand the semantics of the program to be verified and identify incorrect or missing invariants, here is an instrumented program that inserts a few test invocations (in `main`) and logging statements that can print the runtime values of variables to facilitate reasoning of invariants.
-
-instrumented program:
-
-<test_driver_code>
-
-Here is the execution output of the instrumented program. You must explicitly reason based on the execution output, what is not changed between loop interations (likely invariants), whether execution output falsify the existing invariants, etc.:
-
-<execution_output>
-"""
-
-
-def read_inv_gen_prompt(prompt_type: Literal["plain"] = "plain") -> str:
-    return _read_prompt({"plain": INV_GEN_PLAIN_PROMPT_FILE}, prompt_type)
-
-
-def read_test_driver_gen_prompt(
-    test_driver_mode: Literal["hardcoded", "stdin"] = "hardcoded",
-) -> str:
-    return _read_prompt(
-        {
-            "hardcoded": TEST_DRIVER_GEN_HARDCODED_PROMPT_FILE,
-            "stdin": TEST_DRIVER_GEN_STDIN_PROMPT_FILE,
-        },
-        test_driver_mode,
-    )
 
 
 def read_naive_repair_prompt() -> str:

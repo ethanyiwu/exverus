@@ -94,32 +94,6 @@ def program_with_line_no(file: Path) -> str:
 
     return "".join(f"{i + 1}: {line}" for i, line in enumerate(lines))
 
-
-def get_test_driver_file(test_driver_dir: Path) -> Path:
-    """
-    Get the test driver file path.
-    Args:
-        test_driver_dir (Path): The directory containing the test driver.
-    Returns:
-        latest test driver file (Path): The path to the latest test driver file.
-    """
-    test_driver_retry_files = list(test_driver_dir.glob("test_driver_retry_*.rs"))
-    latest_test_driver_file = test_driver_dir / "test_driver.rs"
-    if len(test_driver_retry_files) == 0:
-        pass
-    else:
-        # Find the latest test driver retry file test_driver_retry_{i}.rs
-        latest_test_driver_file = max(
-            test_driver_retry_files, key=lambda f: int(f.stem.split("_")[-1])
-        )
-
-    assert (
-        latest_test_driver_file.is_file()
-    ), f"Latest test driver retry file not found: {latest_test_driver_file}"
-
-    return latest_test_driver_file
-
-
 def get_last_attempt_file(attempt_dir: Path, attempt_file_name: str) -> Path:
     """
     Get the last attempt file in the attempt directory.

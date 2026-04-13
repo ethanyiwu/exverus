@@ -9,10 +9,6 @@ CLEANED_BENCHMARK_ROOT_DIR = ROOT_DIR / "cleaned-verusbench"
 ADDITIONAL_BENCHMARK_ROOT_DIR = ROOT_DIR / "Benchmarks"
 PROMPT_ROOT_DIR = ROOT_DIR / "vinv" / "prompt"
 RESULTS_ROOT_DIR = ROOT_DIR / "results"
-INV_GEN_RESULTS_DIR = RESULTS_ROOT_DIR / "inv_gen"
-INV_GEN_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-INV_GEN_TRACE_RESULTS_DIR = RESULTS_ROOT_DIR / "inv_gen_trace"
-INV_GEN_TRACE_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 PERTURB_RESULTS_DIR = RESULTS_ROOT_DIR / "perturb"
 OBFUSC_RESULTS_DIR = PERTURB_RESULTS_DIR / "obfuscate"
 OBFUSC_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -104,15 +100,6 @@ if mut_ranking_mode not in ALLOWED_MUT_RANKING_MODES:
     )
 # Uppercase alias for consistency with other constants
 MUT_RANKING_MODE = mut_ranking_mode
-
-INV_GEN_PLAIN_PROMPT_FILE = PROMPT_ROOT_DIR / "inv_gen_plain.txt"
-
-TEST_DRIVER_GEN_STDIN_PROMPT_FILE = (
-    PROMPT_ROOT_DIR / "test_driver" / "driver_gen_stdin.txt"
-)
-TEST_DRIVER_GEN_HARDCODED_PROMPT_FILE = (
-    PROMPT_ROOT_DIR / "test_driver" / "driver_gen_hardcoded.txt"
-)
 
 NAIVE_REPAIR_PROMPT_FILE = PROMPT_ROOT_DIR / "iterative" / "naive_repair.txt"
 
