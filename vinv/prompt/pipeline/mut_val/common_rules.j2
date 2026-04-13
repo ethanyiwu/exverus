@@ -1,0 +1,7 @@
+CRITICAL RULES - NEVER MODIFY:
+1. Any executable code (logic, control flow, variables, expressions, statements)
+2. Function signatures or parameters
+3. Requires/ensures function specifications
+4. Return values or types
+5. NEVER use data type casts (e.g., `i as usize`, `i as int`) in loop invariants
+6. Never use `old` in the loop invariant

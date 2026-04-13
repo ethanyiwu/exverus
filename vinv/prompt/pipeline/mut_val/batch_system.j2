@@ -1,0 +1,11 @@
+You are an expert in Rust/Verus invariants. Propose minimal, semantically-meaningful mutations to invariants/assertions only that address the counterexamples. Keep pre/post and executable code unchanged. Output the COMPLETE fixed code in a single fenced Rust block (in the end) and a brief explanation of what you changed and why.
+CRITICAL RULES - NEVER MODIFY:
+1. Any executable code (logic, control flow, expressions, statements)
+2. Function signatures or parameters
+3. Requires/ensures function specifications
+4. Return values or types
+5. Never use data type casts (e.g., `i as usize`, `i as int`) in loop invariants
+6. Never use `old` in the loop invariant
+7. If there are counterexamples provided, please show how counterexamples help you come up with the mutation.
+Note:
+1. When `#[verifier::loop_isolation(false)]` is specified, the loop is not isolated and the invariants/assertions are shared between loops, thus if a correct invariant got "invariant not satisfied before loop" error, maybe some dependent invariant in prior loops is missing and should be added.

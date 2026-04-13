@@ -7,22 +7,11 @@ from loguru import logger
 from vinv.gen.client import request_conversation_one
 from vinv.gen.prompt_utils import (
     make_unified_diff,
-    read_compilation_repair_prompt,
-    read_naive_repair_prompt,
+    render_prompt,
 )
 from vinv.proof import ProofFile
 from vinv.utils import check_status, extract_rs_code_from_response
 from vinv.verus_utils import record_verify_status, verify_with_verus
-
-NAIVE_REFLECT_MSG = """
-The proof file you generated is not correct. The verification failed. Please reflect and try again.
-Error message:
-"""
-
-COMPILATION_REFLECT_MSG = """
-The proof file you generated still has compilation errors. Please focus only on fixing the compilation errors.
-Error message:
-"""
 
 
 def prompt_and_dump_results(
@@ -60,12 +49,10 @@ def prompt_and_dump_results(
         msg_list.append(
             {
                 "role": "user",
-                "content": (
-                    NAIVE_REFLECT_MSG
-                    if repair_strategy == "naive"
-                    else COMPILATION_REFLECT_MSG
-                )
-                + feedback_msg,
+                "content": render_prompt(
+                    f"iterative/reflect_{repair_strategy}.j2",
+                    feedback_msg=feedback_msg,
+                ),
             }
         )
     try:
@@ -154,22 +141,18 @@ def compile_naive_repair_prompt(
     Compile the naive repair prompt. Optionally accept the original unverified proof
     and inject a unified diff highlighting the delta between original and buggy proofs.
     """
-    prompt_template = read_naive_repair_prompt()
     buggy = proof_file.path.read_text()
     original = (
         original_proof_file.read_text() if original_proof_file is not None else ""
     )
-    diff_text = make_unified_diff(original, buggy)
-
-    prompt = (
-        prompt_template.replace("<buggy_proof>", buggy)
-        .replace("<original_proof>", original)
-        .replace("<diff>", diff_text)
-        .replace("<console_error_message>", console_error_message)
-        .replace("<error_message>", console_error_message)
+    return render_prompt(
+        "iterative/naive_repair.j2",
+        buggy_proof=buggy,
+        original_proof=original,
+        diff=make_unified_diff(original, buggy),
+        console_error_message=console_error_message,
+        error_message=console_error_message,
     )
-
-    return prompt
 
 
 def compile_compilation_repair_prompt(
@@ -181,21 +164,17 @@ def compile_compilation_repair_prompt(
     Compile the compilation repair prompt that focuses on fixing compilation errors.
     Optionally accept the original unverified proof and inject a unified diff.
     """
-    prompt_template = read_compilation_repair_prompt()
     buggy = proof_file.path.read_text()
     original = (
         original_proof_file.read_text() if original_proof_file is not None else ""
     )
-    diff_text = make_unified_diff(original, buggy)
-
-    prompt = (
-        prompt_template.replace("{proof_content}", buggy)
-        .replace("{original_proof}", original)
-        .replace("{diff}", diff_text)
-        .replace("{error_message}", console_error_message)
+    return render_prompt(
+        "iterative/compilation_repair.j2",
+        proof_content=buggy,
+        original_proof=original,
+        diff=make_unified_diff(original, buggy),
+        error_message=console_error_message,
     )
-
-    return prompt
 
 
 def iterative_repair(
@@ -236,7 +215,7 @@ def iterative_repair(
     msg_list = [
         {
             "role": "system",
-            "content": "You are an experienced formal language programmer. You are very familiar with Verus, which is a tool for verifying the correctness of code written in Rust.",
+            "content": render_prompt("iterative/system.j2"),
         }
     ]
     repaired_code_path = None

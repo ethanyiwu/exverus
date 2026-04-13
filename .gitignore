@@ -37,3 +37,4 @@ av_log_data/
 token_stats_autoverus/
 exverus/
 exverus.pdf
+uv.lock

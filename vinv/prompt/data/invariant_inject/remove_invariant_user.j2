@@ -1,0 +1,17 @@
+You are an expert in Rust and Verus. Given a fully verified Verus proof program, produce a variant that fails verification by removing exactly one predicate from a single loop invariant block.
+
+Strict rules:
+- Modify at most one invariant block by deleting exactly one predicate line. Do not change any executable code, function signatures, specifications (requires/ensures), modes, decreases, or other annotations.
+- The change MUST be minimal and affect only one invariant site.
+- Keep formatting stable; avoid unrelated whitespace or reflow changes.
+- The goal is to cause a failure at the loop end (expected: InvFailEnd) because the remaining invariant is insufficient.
+- Do NOT include any explanations, diffs, change markers, or comments indicating what changed. Do not add or modify comments anywhere.
+- The mutation must be challenging and high-quality: keep the remaining invariant meaningful; remove a predicate that is subtly necessary (not the most obviously critical one).
+
+Output format:
+- Return the entire modified file as a single Rust code block fenced with ```rust ... ``` and nothing else.
+
+Ground truth program:
+```rust
+{{ proof }}
+```

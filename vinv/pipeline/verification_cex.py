@@ -17,6 +17,7 @@ from typing import Dict, List, Optional, Tuple
 from loguru import logger
 
 from vinv.gen.client import request_conversation_one
+from vinv.gen.prompt_utils import render_prompt
 from vinv.pipeline.assume.run_convert_assume_syn import convert_rust_file_to_string
 from vinv.pipeline.counter_example import CounterExample
 from vinv.pipeline.z3_utils import run_z3_script_with_timeout
@@ -83,11 +84,7 @@ def verification_cex_generation(
         messages = [
             {
                 "role": "system",
-                "content": (
-                    "You are an expert in Rust/Verus and the Python Z3 API. "
-                    "Given an assume/assert-converted program, emit a Python script that finds a model where "
-                    "all assumes hold and at least one assert fails, then set required globals."
-                ),
+                "content": render_prompt("pipeline/verification_cex/system.j2"),
             },
             {"role": "user", "content": prompt},
         ]
@@ -101,13 +98,12 @@ def verification_cex_generation(
 
             base_prompt = prompt
             if last_error_msg or last_response:
-                feedback = (
-                    "Previous attempt failed or incomplete.\n"
-                    f"Error/Issue: {last_error_msg}\n\n"
-                    f"Previous assistant response (truncated):\n{last_response[-4096:]}\n\n"
-                    "Please correct the Python script accordingly."
+                base_prompt = render_prompt(
+                    "pipeline/verification_cex/retry_user.j2",
+                    last_error_msg=last_error_msg,
+                    last_response=last_response[-4096:],
+                    prompt=prompt,
                 )
-                base_prompt = feedback + "\n\n" + prompt
 
             messages[-1] = {"role": "user", "content": base_prompt}
             response_text = request_conversation_one(
@@ -312,254 +308,12 @@ def create_verification_z3_prompt(
       - __z3_cex_status__ in {"sat","unsat","unknown"}
       - __z3_cex_result__ = { var_name: rust_syntax_string_or_json_value, ... }
     """
-    return f"""
-Given a Rust/Verus proof and an assume/assert-converted variant, write a Python script (only code)
-that uses the Python Z3 API to find concrete values at the marker site so that:
-1) All assume(...) clauses in the converted code evaluate to TRUE before the step, and
-2) After executing the single-step effect encoded in the converted code, at least one assert(...) evaluates to FALSE.
-
-Thinking and targeting (do this mentally, then code):
-- Parse the converted code below and list the assert(...) statements that occur AFTER the single-step block (e.g., after push/set and i/n updates). Typical targets include:
-  - element-preservation: forall i: 0 <= i < n ==> c[i] == v[i]
-  - index and length relations: i <= len, a.len() == N, etc.
-- Pick ONE target assert that is plausibly falsifiable by a single step (prefer element-preservation).
-- If the target is quantified, instantiate a tiny domain and check a concrete witness (e.g., i = 0) rather than using quantifiers in Z3.
-
-Modeling strategy for a single-step counterexample:
-- Use tiny concrete domains and arrays: you may model vectors with a few scalar elements (e.g., v0, v1, c0, c1) or with small Python lists and constrain elements, because we only need one concrete model.
-- Enforce all assume(...) clauses exactly as written BEFORE the step (e.g., n != len, v.len() == len, 0 <= n < len+1, forall i < n ==> c[i] == v[i]). For the quantified precondition with n=0, note it holds vacuously.
-- Encode the one-step effect on state as in the converted code (e.g., c.push(v[n]); n = n + 1; or equivalent on your small model).
-- Then falsify the chosen post-step assert by choosing concrete values, e.g. make c[0] != v[0] when n becomes 1 after the step.
-
-Practical rules:
-- Import z3 and use Int/Bool sorts; indices/lengths must be non-negative.
-- Avoid using a Z3 symbolic Int in Python range; use tiny concrete integers for bounds (e.g., N = 2, len = 3, n = 0 or 1).
-- Keep it minimal and concrete.
-
-Z3 API usage rules (critical):
-- Never use Python's if/and/or/not on Z3 BoolRef expressions.
-- Compose logic only with z3.And, z3.Or, z3.Not, z3.Implies; add constraints using s.add(...).
-- Do not compare BoolRef to True/False; avoid Python truthiness of Z3 objects entirely.
-- For conditionals returning expressions, use z3.If(cond, then_expr, else_expr), not Python if.
-- Never gate solver.add calls behind Python if using Z3 conditions; build constraints and feed them to the solver.
-
-Absolutely avoid free identifiers and use a witness constant:
-- Define a plain Python int witness `i_witness = 0` and only check that index; do NOT reference an undefined `i` anywhere.
-- Prefer concrete pre-state like `n0 = 0`, `len_val = 3`, `v = [1,2,3]`, `c = [5,6,7]` (these satisfy all preconditions when n0=0).
-- Encode one step to obtain `c_prime` and `n1 = n0 + 1`, then assert `c_prime[i_witness] != v[i_witness]`.
-
-Required globals:
-- Set __z3_cex_status__ = "sat" | "unsat" | "unknown".
-- If SAT, set __z3_cex_result__ to a JSON-serializable dict mapping ORIGINAL Rust var names to concrete values. For any Rust Vec variables (e.g., `arr1: Vec<i32>`), either:
-  - Provide namespaced element-wise scalars `__vec__arr1__0`, `__vec__arr1__1`, ... (optionally `__vec__arr1__len`). The system will reconstruct `"arr1": "vec![...]"` before injection; or
-  - Directly provide the aggregated entry `"arr1": "vec![...]"` where the value is a STRING using Rust's vec! macro (preferred when simple). Legacy `arr1_0`/`arr1_len` is also accepted.
-- IMPORTANT: Do NOT use f-strings, format(), or any string interpolation. Assign the result using dict(...):
-  result = dict(v="[1,2,3]", elem="4", c="[5,6,7]", n="0", len="3")
-  __z3_cex_result__ = result
-  If you need braces in string content, keep them inside plain strings.
-
-Few-shot Example and Advanced Hints:
-To guide your response, study the following example of an input and the ideal output script.
-
---- Begin Example ---
-
-USER INPUT (Assume/assert-converted code only):
-
-Rust
-```rust
-fn append_while1(v: &Vec<u64>, elem: u64)
-    let mut c = Vec::with_capacity(v.len() + 1);
-    let mut n: usize = 0;
-    let len: usize = v.len();
-
-    assume(n != len);
-    assume(v.len() == len);
-    assume(n >= 0);
-    assume(n < len + 1);
-    // Note: assume(c.len() == n) is missing.
-    assume(forall|i: int| (0 <= i && i < n) ==> c[i] == v[i]);
-
-    c.push(v[n]);
-    n = n + 1;
-
-    assert(v.len() == len);
-    assert(n >= 0);
-    assert(n < len + 1);
-    assert(forall|i: int| (0 <= i && i < n) ==> c[i] == v[i]);
-
-
-IDEAL ASSISTANT OUTPUT (The Python script):
-
-Python
-
-from z3 import *
-
-# Goal: Find an initial state where assumes hold but the final assert fails.
-# Strategy: Focus on the n=0 case, where the `forall` assume is vacuously true,
-# allowing `c` to have arbitrary contents.
-
-__z3_cex_status__ = "unknown"
-__z3_cex_result__ =
-
-s = Solver()
-
-# 1. Declare Z3 variables for the program state.
-# `c_len` is crucial for modeling the vector's length independently of `n`.
-n, len, c_len = Ints('n len c_len')
-v = Array('v', IntSort(), IntSort())
-c = Array('c', IntSort(), IntSort())
-
-# 2. Concretize the scenario for a quick solution.
-# We target the first loop iteration where the `forall` assume is weakest.
-s.add(len == 3)
-s.add(n == 0)
-
-# 3. Add all preconditions from the `assume` block.
-s.add(n != len)
-s.add(n >= 0)
-s.add(n < len + 1)
-s.add(c_len >= 0) # Length must be non-negative
-
-# The `forall` assume is vacuously true for n=0, so it imposes no constraints
-# on the initial contents of `c`, which is what allows a counterexample.
-
-# 4. Model the single step. `push` adds to the end of `c` (at index `c_len`).
-c_prime = Store(c, c_len, Select(v, n))
-n_prime = n + 1
-
-# 5. Add the NEGATION of the target assertion.
-# We want to find a case where the final assertion is FALSE.
-# The assertion is `forall j in 0..n_prime, c_prime[j] == v[j]`.
-# For n=0, n_prime=1, so we only need to check the witness j=0.
-j = 0
-target_assert = (Select(c_prime, j) == Select(v, j))
-s.add(Not(target_assert))
-
-# 6. Solve and format the result.
-if s.check() == sat:
-    m = s.model()
-    # Build the result dictionary with concrete, Rust-like string values.
-    len_val = m.evaluate(len).as_long()
-    c_len_val = m.evaluate(c_len).as_long()
-
-    # Evaluate arrays to get concrete lists for the output
-    v_res = []
-    for i in range(len_val):
-        val = m.evaluate(Select(v, i))
-        v_res.append(val.as_long() if val else 0)
-
-    c_res = []
-    for i in range(c_len_val):
-        val = m.evaluate(Select(c, i))
-        c_res.append(val.as_long() if val else 0)
-
-    n_res = m.evaluate(n).as_long()
-
-    # The user's counterexample used specific values, so we use them for consistency.
-    # The actual Z3 result may vary but will have the same logical failure.
-    result = dict(
-        v=str([1,2,3]),
-        elem="4",
-        c=str([5,6,7]),
-        n=str(n_res),
-        len=str(len_val)
+    return render_prompt(
+        "pipeline/verification_cex/user.j2",
+        proof_content=proof_content,
+        converted_code=converted_code,
+        verus_analysis_text=verus_analysis_text,
     )
-
-    __z3_cex_status__ = "sat"
-    __z3_cex_result__ = result
-else:
-    __z3_cex_status__ = "unsat"
-
---- End Example ---
-
-Key Principles for Modeling:
-Implicit State is Key: A program vector c has both contents (Array) and a length. You MUST model the length with its own Z3 variable (e.g., c_len) unless an assume statement forces it to be equal to another variable (like n).
-
-Model Semantics Precisely: An operation like c.push(v[n]) acts on the vector's end (its current length), which may not be equal to n. Model it as Store(c, c_len, ...).
-
-Exploit Weak Preconditions: A forall over an empty range (e.g., when a loop counter n is 0) is vacuously true. This is the best place to look for counterexamples because the state is less constrained.
-
-Advanced Hints: Modeling Vectors (Vec<T>)
-The Two-Part Model: Always model a program Vec<T> with two Z3 variables:
-
-An Array for the contents: v_contents = Array('v', IntSort(), IntSort())
-
-An Int for the length: v_len = Int('v_len')
-
-Translating Operations:
-
-v.len() becomes v_len
-
-v[i] becomes Select(v_contents, i)
-
-v.push(elem) becomes a two-part state update:
-
-v_contents_prime = Store(v_contents, v_len, elem)
-
-v_len_prime = v_len + 1
-
-Advanced Hints: Handling forall Quantifiers
-Your primary goal is to find one concrete counterexample, not to create a general proof. SMT solvers are slow with quantifiers. Therefore:
-
-Avoid Z3 ForAll in Assertions: When negating an assert that contains a forall, do not model the ForAll. Instead, pick a single concrete witness index that is likely to fail.
-
-Example: To falsify assert(forall|i: int| 0 <= i < n' ==> c'[i] == v[i]), the best strategy is to check the first new element, or simply index 0. The Z3 constraint should be the much simpler, quantifier-free version:
-
-Python
-
-# Check a single witness index instead of using a slow ForAll
-i_witness = 0
-s.add(Not(Select(c_prime, i_witness) == Select(v, i_witness)))
-Analyze ForAll in Assumptions: For assume statements, the forall is a precondition. The best way to handle it is to find a scenario where it is weak.
-
-Example: For assume(forall|i: int| 0 <= i < n ==> ...), set n = 0 (s.add(n == 0)). This makes the assume vacuously true, placing no constraints on the initial contents of the arrays and giving you the freedom to find a counterexample.
-
-Hint: Avoid Over-Constraining; Focus on Finding "Non-Ideal" States
-When generating Z3 constraints to find a counterexample, your primary goal is to exploit weaknesses in the preconditions (assume block), not to "fix" or "idealize" the initial state by adding new, unstated constraints. Bugs and vulnerabilities often hide in states that seem counter-intuitive but are still permitted by the assume clauses.
-
-Core Principles
-Don't Assume "Synchronized" or "Ideal" Relationships Between State Variables:
-
-Incorrect Example: In the previous scenario, even if you set s.add(n == 0) to weaken a forall loop, you should never add s.add(c_len == 0) or s.add(c_len == n) on your own initiative.
-
-Reasoning: The program's assume block did not enforce that c.len() must equal n. This "missing constraint" is the core of the vulnerability. By adding this constraint yourself, you are effectively helping the faulty program hide its own bug, which causes Z3 to return unsat and incorrectly imply the code is safe.
-
-Treat an "Unconstrained" Variable as an Opportunity, Not a Problem:
-
-Correct Mindset: When you identify a variable, like c_len, whose value is not strictly limited by the assume block, you should think like a software tester or an attacker: "Can I set this variable to an unexpected but legal value to break the program's logic?"
-
-Correct Example: s.add(c_len >= 1). This constraint explores the possibility that the vector c is non-empty before the loop begins, which is the precise path to finding the counterexample.
-
-Distinguish Between "Strategic Constraints" and "Over-Constraining":
-
-Strategic Constraint: s.add(n == 0) is a good strategic move. It exploits the logical weakness that a precondition like forall|i| 0 <= i < n ==> ... becomes vacuously true when n=0. This maximizes your freedom to find a counterexample using other variables (like the contents of c).
-
-Over-Constraining: s.add(c_len == 0) is a harmful move. It adds a new, powerful assumption that was not required by the code. This assumption closes off the very scenarios where the bug could be found.
-
-Summary
-When adding constraints to Z3, strictly adhere to the following rules:
-
-Only add preconditions that are explicitly stated in the code's assume block.
-
-For any variable that is not explicitly constrained, actively explore non-typical, non-ideal, but legal values. This is where vulnerabilities are most likely to be found.
-
-Original Rust/Verus proof (context):
-```rust
-{proof_content}
-```
-
-Assume/assert-converted code (focus near the marker and the post-step asserts):
-```rust
-{converted_code}
-```
-
-Relevant verification output (if any):
-```
-{verus_analysis_text}
-```
-
-Now output ONLY the Python script that sets the required globals.
-"""
 
 
 def inject_assignment_into_converted(

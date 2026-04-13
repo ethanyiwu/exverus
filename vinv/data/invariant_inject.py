@@ -13,119 +13,27 @@ from veval import VerusErrorType, VEval
 from vinv.config import INV_INJECT_RESULTS_DIR
 from vinv.data.cherrypick import get_all_vb_proofs
 from vinv.gen.client import request_prompt_one
-from vinv.gen.prompt_utils import make_unified_diff
+from vinv.gen.prompt_utils import make_unified_diff, render_prompt
 from vinv.proof import OneStepProofFile, ProofFile
 from vinv.utils import extract_rs_code_from_response
 from vinv.verus_utils import record_verify_status, verify_with_verus
 
-STRENGTHEN_INVARIANT_PROMPT = (
-    """
-You are an expert in Rust and Verus. Given a fully verified Verus proof program, produce a variant that fails verification by strengthening exactly one loop invariant.
-
-Strict rules:
-- Modify at most one invariant block. Do not change any executable code, function signatures, specifications (requires/ensures), modes, decreases, or other annotations.
-- The change MUST be minimal (e.g., change `>=` to `>`, add a conjunct like `&& x > 0`, or tighten a bound) and should target a single invariant site so that only one invariant is different from the ground truth.
-- Keep formatting stable; avoid unrelated whitespace or reflow changes.
-- The goal is to cause a failure at the loop entry (expected: InvFailFront) because the stronger invariant does not initially hold.
- - Do NOT include any explanations, diffs, change markers, or comments indicating what changed. Do not add or modify comments anywhere.
- - The mutation must be challenging and high-quality: avoid trivial always-false/always-true predicates, avoid obviously bogus clauses; prefer a subtle, realistic strengthening (e.g., tighter off-by-one bound) that plausibly fits the program's intent.
-
-Output format:
-- Return the entire modified file as a single Rust code block fenced with ```rust ... ``` and nothing else.
-
-Ground truth program:
-```rust
-{proof}
-```
-"""
-).strip()
-
-
-WEAKEN_INVARIANT_PROMPT = (
-    """
-You are an expert in Rust and Verus. Given a fully verified Verus proof program, produce a variant that fails verification by weakening exactly one loop invariant.
-
-Strict rules:
-- Modify at most one invariant block. Do not change any executable code, function signatures, specifications (requires/ensures), modes, decreases, or other annotations.
-- The change MUST be minimal (e.g., remove a conjunct, relax a bound like `>=` to `>`, or broaden a range) and should target a single invariant site so that only one invariant is different from the ground truth.
-- Keep formatting stable; avoid unrelated whitespace or reflow changes.
-- The goal is to cause a failure at the loop end (expected: InvFailEnd) because the weakened invariant is not re-established or insufficient for the proof obligations at the end of the iteration.
- - Do NOT include any explanations, diffs, change markers, or comments indicating what changed. Do not add or modify comments anywhere.
- - The mutation must be challenging and high-quality: avoid weakening to a tautology; keep the invariant meaningful but insufficient in a subtle way (e.g., relax an off-by-one boundary).
-
-Output format:
-- Return the entire modified file as a single Rust code block fenced with ```rust ... ``` and nothing else.
-
-Ground truth program:
-```rust
-{proof}
-```
-"""
-).strip()
-
-
-ADD_INVARIANT_PROMPT = (
-    """
-You are an expert in Rust and Verus. Given a fully verified Verus proof program, produce a variant that fails verification by adding exactly one additional loop invariant clause at a single loop.
-
-Strict rules:
-- Modify at most one invariant block by adding exactly one new predicate line (single additional clause). Do not change any executable code, function signatures, specifications (requires/ensures), modes, decreases, or other annotations.
-- The change MUST be minimal and affect only one invariant site.
-- Keep formatting stable; avoid unrelated whitespace or reflow changes.
-- The goal is to cause a failure at the loop entry (expected: InvFailFront) because the added invariant does not initially hold.
- - Do NOT include any explanations, diffs, change markers, or comments indicating what changed. Do not add or modify comments anywhere.
- - The mutation must be challenging and high-quality: the added clause should be plausible and non-trivial (not obviously false), but just strong enough to break initialization.
-
-Output format:
-- Return the entire modified file as a single Rust code block fenced with ```rust ... ``` and nothing else.
-
-Ground truth program:
-```rust
-{proof}
-```
-"""
-).strip()
-
-
-REMOVE_INVARIANT_PROMPT = (
-    """
-You are an expert in Rust and Verus. Given a fully verified Verus proof program, produce a variant that fails verification by removing exactly one predicate from a single loop invariant block.
-
-Strict rules:
-- Modify at most one invariant block by deleting exactly one predicate line. Do not change any executable code, function signatures, specifications (requires/ensures), modes, decreases, or other annotations.
-- The change MUST be minimal and affect only one invariant site.
-- Keep formatting stable; avoid unrelated whitespace or reflow changes.
-- The goal is to cause a failure at the loop end (expected: InvFailEnd) because the remaining invariant is insufficient.
- - Do NOT include any explanations, diffs, change markers, or comments indicating what changed. Do not add or modify comments anywhere.
- - The mutation must be challenging and high-quality: keep the remaining invariant meaningful; remove a predicate that is subtly necessary (not the most obviously critical one).
-
-Output format:
-- Return the entire modified file as a single Rust code block fenced with ```rust ... ``` and nothing else.
-
-Ground truth program:
-```rust
-{proof}
-```
-"""
-).strip()
-
-
 INJECT_TYPES = {
     "strengthen_invariant": {
         "expected_error_type": VerusErrorType.InvFailFront,
-        "prompt": STRENGTHEN_INVARIANT_PROMPT,
+        "template": "data/invariant_inject/strengthen_invariant_user.j2",
     },
     "weaken_invariant": {
         "expected_error_type": VerusErrorType.InvFailEnd,
-        "prompt": WEAKEN_INVARIANT_PROMPT,
+        "template": "data/invariant_inject/weaken_invariant_user.j2",
     },
     "add_invariant": {
         "expected_error_type": VerusErrorType.InvFailFront,
-        "prompt": ADD_INVARIANT_PROMPT,
+        "template": "data/invariant_inject/add_invariant_user.j2",
     },
     "remove_invariant": {
         "expected_error_type": VerusErrorType.InvFailEnd,
-        "prompt": REMOVE_INVARIANT_PROMPT,
+        "template": "data/invariant_inject/remove_invariant_user.j2",
     },
 }
 
@@ -290,16 +198,11 @@ def run_injection_once(
     original_code = proof_file.read_text()
     (out_dir / "gt.rs").write_text(original_code)
 
-    prompt_template: str = INJECT_TYPES[inject_type]["prompt"]
-    user_prompt = prompt_template.replace("{proof}", original_code)
-
-    system_prompt = (
-        "You are an expert in Rust and Verus programming. Produce only one "
-        "minimal mutation to a single invariant; never modify executable code "
-        "or specifications. Output ONLY a single ```rust``` code block with "
-        "the full file and NOTHING ELSE (no explanations, no diffs, no extra "
-        "text). Do not add or modify comments."
+    user_prompt = render_prompt(
+        INJECT_TYPES[inject_type]["template"],
+        proof=original_code,
     )
+    system_prompt = render_prompt("data/invariant_inject/system.j2")
     response = request_prompt_one(
         user_prompt,
         system=system_prompt,

@@ -4,20 +4,21 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from vinv.config import (
-    COMPILATION_REPAIR_PROMPT_FILE,
-    NAIVE_REPAIR_PROMPT_FILE,
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
+
+from vinv.config import PROMPT_ROOT_DIR
+
+PROMPT_ENV = Environment(
+    loader=FileSystemLoader(PROMPT_ROOT_DIR),
+    undefined=StrictUndefined,
+    autoescape=False,
 )
 
-VERUS_SYSTEM_PROMPT = "You are an experienced Rust programmer. You are very familiar with Verus, which is a tool for verifying the correctness of code written in Rust."
 
-
-def read_naive_repair_prompt() -> str:
-    return NAIVE_REPAIR_PROMPT_FILE.read_text(encoding="utf-8").strip()
-
-
-def read_compilation_repair_prompt() -> str:
-    return COMPILATION_REPAIR_PROMPT_FILE.read_text(encoding="utf-8").strip()
+def render_prompt(template_name: str, **context: object) -> str:
+    if not template_name.endswith(".j2"):
+        raise ValueError(f"Prompt templates must use .j2 files: {template_name}")
+    return PROMPT_ENV.get_template(template_name).render(**context).strip()
 
 
 def read_conversation_file(conversation_file: Path) -> list[dict]:
@@ -61,13 +62,3 @@ def count_tokens(
     if model.startswith(("gpt-", "o1", "o3", "o4", "deepseek")):
         return len(re.findall(r"[A-Za-z_]+|[0-9]+|\n|[^\w\s]", content))
     raise ValueError(f"Unknown model: {model}.")
-
-
-def _read_prompt(prompt_files: dict[str, Path], prompt_type: str) -> str:
-    prompt_file = prompt_files.get(prompt_type)
-    if prompt_file is None:
-        supported = ", ".join(sorted(prompt_files))
-        raise ValueError(
-            f"Unknown template: {prompt_type}. Supported templates: {supported}."
-        )
-    return prompt_file.read_text(encoding="utf-8").strip()

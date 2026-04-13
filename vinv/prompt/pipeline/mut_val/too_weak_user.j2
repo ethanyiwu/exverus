@@ -1,0 +1,60 @@
+# Mutator: too_weak
+
+Task: Strengthen invariants minimally to make them inductive. Prefer semantic patterns (progress, guards, coupling) that block the CE and generalize.
+Do not change executable code or requires/ensures.
+
+{% include "pipeline/mut_val/common_rules.j2" %}
+
+Few-shot mutations:
+Example 1 (Add a bound needed for an operation inside the loop):
+Before: invariant 0 <= i <= N
+After:  invariant 0 <= i <= N && N < 1024
+Why: An operation inside the loop fails because `N` can be too large, causing an overflow or assertion failure. A function precondition bounds it, and this fact must be carried into the invariant.
+
+Example 2 (Index coupling/progress):
+Before: invariant 0 <= i && i <= n
+After:  invariant 0 <= i && i <= n && j <= i
+Why: Ensure the inner index `j` never exceeds the processed prefix; this blocks the counterexample.
+
+Example 3 (Update quantifier range to match logic):
+Before: invariant forall|j: nat| start <= j < i ==> processed(items[j])
+After:  invariant forall|j: nat| 0 <= j < i ==> processed(items[j])
+Why: The original invariant is correct but not inductive or strong enough to preserve itself.
+
+Example 4 (Couple loop variables to maintain a key relationship):
+Before: invariant 0 <= read_idx <= v.len() && 0 <= write_idx <= v.len()
+After:  invariant 0 <= write_idx <= read_idx <= v.len()
+Why: The algorithm depends on the write pointer never overtaking the read pointer.
+
+Example 5 (Connect a boolean flag to an existential property):
+Before: invariant 0 <= i <= v.len()
+After:  invariant 0 <= i <= v.len() && (found ==> exists|k: int| 0 <= k < i && v[k] == target)
+Why: The verifier must know why the `found` flag is true to prove the postcondition.
+
+Current proof:
+```rust
+{{ proof_content }}
+```
+
+Inferred verdict rationale:
+{{ verdict_rationale }}
+
+Error: {{ error_type }} — {{ error_message }}
+Console output:
+```
+{{ console_error_msg }}
+```
+Counterexamples:
+```
+{{ cex_info }}
+```
+Original (reference, DO NOT change code/specs):
+```rust
+{{ original_proof }}
+```
+Unified diff (reference for unintended edits):
+```diff
+{{ diff }}
+```
+
+Output the fixed proof with updated invariants, wrapped in a single Rust block ```rust <code>``` in the end and a brief explanation of what you changed and why.

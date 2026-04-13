@@ -20,23 +20,29 @@ FORBIDDEN PROOF METHODS:
 - NEVER use `assume()` to bypass proof obligations
 
 ADDITIONAL GUIDANCE:
-- **Compare the buggy proof with the original unverified proof** using the provided diff (`{diff}`). Use `{original_proof}` as the canonical reference of the original source. If there is any discrepancy in executable code or specifications between `{proof_content}` and `{original_proof}`, prefer the original unverified proof and do not alter its execution logic or specs.
-
-
+- Compare the buggy proof with the original unverified proof using the provided diff. Use the original unverified proof as the canonical reference. If there is any discrepancy in executable code or specifications between the current proof and the original proof, prefer the original unverified proof and do not alter its execution logic or specs.
 
 Here is the current proof file that has compilation errors:
 
-{proof_content}
+```rust
+{{ proof_content }}
+```
 
 Also include the original, unverified proof for reference (note that the repaired proof must not change any execution code, requires/ensures function specifications, etc., of the unverified proof):
-{original_proof}
+```rust
+{{ original_proof }}
+```
 
 Also include a unified diff showing the delta between the original unverified proof and the current proof under analysis. Use this diff to identify unintended edits to executable code or specifications:
-{diff}
+```diff
+{{ diff }}
+```
 
 The compiler reported the following errors:
 
-{error_message}
+```
+{{ error_message }}
+```
 
 Please fix the compilation errors in the code. Focus ONLY on making the code compile - don't worry about verification errors yet. Follow these guidelines:
 

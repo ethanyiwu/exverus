@@ -101,12 +101,6 @@ if mut_ranking_mode not in ALLOWED_MUT_RANKING_MODES:
 # Uppercase alias for consistency with other constants
 MUT_RANKING_MODE = mut_ranking_mode
 
-NAIVE_REPAIR_PROMPT_FILE = PROMPT_ROOT_DIR / "iterative" / "naive_repair.txt"
-
-COMPILATION_REPAIR_PROMPT_FILE = (
-    PROMPT_ROOT_DIR / "iterative" / "compilation_repair.txt"
-)
-
 VB_BENCHMARK_VERIFIED_ENTRY_POINTS = {
     # "humaneval": BENCHMARK_ROOT_DIR / "human-eval-verus" / "tasks",
     # "interprocedural": BENCHMARK_ROOT_DIR / "interprocedural" / "AlgorithmRust",

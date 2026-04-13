@@ -1,0 +1,44 @@
+# Verdict Inference for Invariant Repair
+
+Classify the failure into one of: wrong_fact, too_weak, other.
+
+Given:
+- Proof:
+```rust
+{{ proof_content }}
+```
+- Error Type: {{ error_type }}
+- Error Message: {{ error_message }}
+- Console output:
+```
+{{ console_error_msg }}
+```
+
+Counterexamples (if any):
+```
+{{ cex_info }}
+```
+
+Please reason step by step on whether the counterexamples are reachable states or spurious states.
+
+Domain knowledge:
+- If the error is `invariant not satisfied before loop`, the invariant is likely a wrong fact and needs to be weakened or removed. Or it is missing a fact that was not explicitly stated previously, e.g., not stated in prior loops.
+- If the error is `invariant not satisfied at end of loop body`, the invariant could be a wrong fact or correct but too weak; propose strengthening if plausible or replace it with a correct one.
+- PreCondFailVecLen, PreCondFail, and ArithmeticFlow often indicate missing bounds over array indices or variables, suggesting the invariant is too weak.
+- If all invariants are correct, the error is likely other.
+- If an invariant is a correct fact but still got `invariant not satisfied before loop` error, it's possible that a dependent invariant or fact is not stated in prior loops and should be added.
+- `old` is not allowed in the loop invariant.
+- For errors not related to invariants or bound overflow/underflow, the error is likely other.
+- For `other` error, when the invariants look correct, we likely need to add or fix some assertions to fix it.
+- The provided counterexamples are not necessarily reachable states; they could be spurious states that satisfy the invariants but fail the invariants after one iteration.
+- No counterexamples provided does not mean there are no counterexamples.
+
+Instructions:
+1) Decide whether the invariant/assertion is a wrong_fact, too_weak, or other. Use the knowledge above.
+2) Consider CE reachability: real/reachable => wrong_fact; spurious => too_weak.
+3) InvFailFront is usually wrong_fact (but not always); InvFailEnd can be either wrong_fact or too_weak.
+4) PreCondFailVecLen, PreCondFail, and ArithmeticFlow usually imply too_weak (missing bounds).
+5) If there are counterexamples provided, please show how counterexamples help you decide the verdict.
+
+Output strictly as JSON:
+{"verdict": "wrong_fact|too_weak|other", "rationale": "..."}

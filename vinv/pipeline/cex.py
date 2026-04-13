@@ -6,7 +6,7 @@ from loguru import logger
 from veval import VerusError, VerusErrorType, VEval
 
 from vinv.gen.client import request_prompt_one
-from vinv.gen.prompt_utils import make_unified_diff, read_compilation_repair_prompt
+from vinv.gen.prompt_utils import make_unified_diff, render_prompt
 from vinv.pipeline.counter_example import CounterExample, add_validate_status
 from vinv.pipeline.error_priority import sort_errors_by_priority
 from vinv.pipeline.mut_val_generalization import mut_val_cex_generalization
@@ -49,23 +49,19 @@ def cex_compilation_repair(
 
     buggy_proof_content = buggy_proof_file.read_text()
 
-    prompt_template = read_compilation_repair_prompt()
     assert (
         original_proof_file is not None
     ), "original_proof_file is required for compilation repair"
     original = original_proof_file.read_text()
-    diff_text = make_unified_diff(original, buggy_proof_content)
-    prompt = (
-        prompt_template.replace("{proof_content}", buggy_proof_content)
-        .replace("{original_proof}", original)
-        .replace("{diff}", diff_text)
-        .replace("{error_message}", console_error_msg)
+    prompt = render_prompt(
+        "iterative/compilation_repair.j2",
+        proof_content=buggy_proof_content,
+        original_proof=original,
+        diff=make_unified_diff(original, buggy_proof_content),
+        error_message=console_error_msg,
     )
 
-    system_prompt = (
-        "You are an expert in Rust and Verus programming. You fix compilation "
-        "errors without changing original executable logic or specifications."
-    )
+    system_prompt = render_prompt("pipeline/cex/compilation_repair_system.j2")
     response = request_prompt_one(
         prompt,
         system=system_prompt,

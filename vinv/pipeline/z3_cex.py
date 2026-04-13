@@ -15,6 +15,7 @@ from loguru import logger
 from veval import VerusError
 
 from vinv.gen.client import request_conversation_one
+from vinv.gen.prompt_utils import render_prompt
 from vinv.pipeline.counter_example import CounterExample
 from vinv.pipeline.z3_utils import run_z3_script_with_timeout
 from vinv.utils import extract_python_code_block
@@ -278,14 +279,7 @@ def z3_cex_generation(
 
         # Initialize a persistent conversation so each attempt can build on the last
         base_prompt = z3_prompt
-        system_prompt = f"""
-You are an expert in Rust/Verus verification and the Python Z3 API.
-Produce a Python script that uses the `z3` package to encode the failing
-condition described in the Rust/Verus proof and produce a concrete model.
-You MUST generate up to {num_cex} distinct satisfying models and collect them.
-- You MUST encode the values of ALL variables in the proof/loop/invariant into the final
-  results, even if they are not used in the model solving.
-"""
+        system_prompt = render_prompt("pipeline/z3_cex/system.j2", num_cex=num_cex)
         messages = [
             {
                 "role": "system",
@@ -344,10 +338,10 @@ You MUST generate up to {num_cex} distinct satisfying models and collect them.
                 messages.append(
                     {
                         "role": "user",
-                        "content": f"Previous attempt failed with error:\n{last_error_msg}\n\n"
-                        "Please revise your previous Python Z3 script to fix the issue. "
-                        'Ensure it executes without exceptions, sets `__z3_cex_status__` to "sat", "unsat", or "unknown" as appropriate, '
-                        "and when SAT, sets `__z3_cex_results__` to a JSON-serializable list of dicts. Return only the corrected Python code.",
+                        "content": render_prompt(
+                            "pipeline/z3_cex/retry_error_user.j2",
+                            last_error_msg=last_error_msg,
+                        ),
                     }
                 )
                 continue
@@ -365,9 +359,10 @@ You MUST generate up to {num_cex} distinct satisfying models and collect them.
                     messages.append(
                         {
                             "role": "user",
-                            "content": f"Previous attempt failed with error:\n{last_error_msg}\n\n"
-                            "Please adjust the constraints to make the failing condition satisfiable (prefer minimal constraints). "
-                            "Ensure type ranges and vector modeling are respected, then resend ONLY the corrected Python code.",
+                            "content": render_prompt(
+                                "pipeline/z3_cex/retry_unsat_user.j2",
+                                last_error_msg=last_error_msg,
+                            ),
                         }
                     )
                     continue
@@ -377,8 +372,10 @@ You MUST generate up to {num_cex} distinct satisfying models and collect them.
                     messages.append(
                         {
                             "role": "user",
-                            "content": f"Previous attempt failed with error:\n{last_error_msg}\n\n"
-                            "Please simplify or adjust the encoding to avoid unknown. Return ONLY the corrected Python code.",
+                            "content": render_prompt(
+                                "pipeline/z3_cex/retry_unknown_user.j2",
+                                last_error_msg=last_error_msg,
+                            ),
                         }
                     )
                     continue
@@ -392,8 +389,11 @@ You MUST generate up to {num_cex} distinct satisfying models and collect them.
                 messages.append(
                     {
                         "role": "user",
-                        "content": f"Previous attempt failed with error:\n{last_error_msg}\n\n"
-                        f"Please modify the script to collect up to {num_cex} of models and assign a JSON-serializable list of dicts to `__z3_cex_results__`. Return ONLY the corrected Python code.",
+                        "content": render_prompt(
+                            "pipeline/z3_cex/retry_missing_results_user.j2",
+                            last_error_msg=last_error_msg,
+                            num_cex=num_cex,
+                        ),
                     }
                 )
                 continue
@@ -415,8 +415,11 @@ You MUST generate up to {num_cex} distinct satisfying models and collect them.
                 messages.append(
                     {
                         "role": "user",
-                        "content": f"Previous attempt failed with error:\n{last_error_msg}\n\n"
-                        f"Please generate more results to meet the requirement of {num_cex}.",
+                        "content": render_prompt(
+                            "pipeline/z3_cex/retry_need_more_results_user.j2",
+                            last_error_msg=last_error_msg,
+                            num_cex=num_cex,
+                        ),
                     }
                 )
                 continue
@@ -494,97 +497,12 @@ def create_z3_prompt(
     list of dicts mapping variable names to concrete values. The script should be
     self-contained and import `z3`.
     """
-    focused_error_text = verus_error.get_text()
-    full_error_text = console_error_msg
-    extracted_loop_section = (
-        f"""
-To assist in understanding the proof and the target loop, the following is the extracted function where loop invariants are converted into assertions. Use this as a guide to create a Z3 script that reveals the error and generates counterexamples.
-
-Hints for reproducing invariant errors:
-1. For "error: invariant not satisfied before loop", please write a Z3 script that finds **reachable** concrete counterexamples that **MUST** falsify the target invariant before the loop.
-2. For "error: invariant not satisfied at end of loop body", please write a Z3 script that finds concrete counterexamples (not necessarily reachable) where the the counterexamples **MUST** satisfy the target invariant before the loop and **MUST** satisfy the loop condition, but do not satisfy the target invariant at the end of the loop.
-
-Here is the extracted function with transformed invariants:
-```rust
-{extracted_loop_function}
-```
-"""
-        if extracted_loop_function
-        else ""
+    return render_prompt(
+        "pipeline/z3_cex/user.j2",
+        proof_content=proof_content,
+        extracted_loop_function=extracted_loop_function,
+        error_type=verus_error.error.name,
+        focused_error_text=verus_error.get_text(),
+        full_error_text=console_error_msg,
+        num_cex=num_cex,
     )
-
-    prompt = f"""
-Given the following Rust/Verus proof code and the verification error, write a Python script
-that uses the Python Z3 API to encode constraints that capture the failing condition and
-produce a concrete model (counter example).
-
-Requirements:
-- The script must `import z3` and create Z3 variables with appropriate types (Int, Bool, Arrays, etc.).
-- The script must assert constraints such that `z3.check()` returns `z3.sat` when the failing
-  state is possible.
-- Each loop is a separate environment. Please only translate the written invariants/assertions of the loop faithfully, do not add any other constraints elsewhere, e.g., facts from preconditions unless they are explicitly stated in the loop invariants or `#[verifier::loop_isolation(false)]` is specified.
-- You MUST enumerate up to {num_cex} distinct satisfying models by adding a blocking clause after each model is found, and collect them.
-- The script must assign a JSON-serializable list of dicts to a global variable named `__z3_cex_results__` (each dict maps variable names to concrete values).
-- Vectors (naming convention for reconstruction): To avoid name collisions, when you model a Rust Vec like `arr1: Vec<i32>` using element-wise scalars, name them with a namespace as `__vec__arr1__0`, `__vec__arr1__1`, ... (contiguously from 0). Optionally include a concrete scalar `__vec__arr1__len` giving the intended number of elements. You do not need to emit the aggregated `"arr1"` entry; the system will reconstruct `"arr1": "vec![...]"` from your namespaced entries (and `__len` if provided). If you do emit the aggregated entry, it MUST be a STRING like `"vec![1, 2]"`.
-- Keep the script minimal and concrete. Use small integer values where possible.
-- You MUST encode the values of ALL variables (including arrays or vectors) in the proof/loop/invariant into the final
-  results, even if they are not used in the model solving.
-- You MUST not assume anything that is not explicitly stated in the loop invariants/assertions/preconditions. If a variable is not explicitly stated in the loop invariants/assertions/preconditions, you MUST NOT assume anything about it even if there are implicit/explicit assignments to it.
-- You MUST avoid using Nones in the results.
-
-Practical guidance to avoid UNSAT and runtime errors:
-- If a variable like `N`, `len`, or an index is used to size arrays or in Python `range(...)`, do NOT use symbolic Z3 Ints as Python loop bounds; instead, assign a small concrete Int (e.g., `N = z3.IntVal(2)`) and use that concrete value for any Python-side constructs.
-- For vectors/arrays, you may model them with explicit small concrete elements instead of Z3 Arrays when convenient, since we only need a single concrete counterexample (e.g., set `a0, a1` as IntVals and relate them, or fix `a = [0, 1]` and express constraints on indices).
-- Indices and lengths should be non-negative (>= 0). Avoid expressions that require interpreting a Z3 ArithRef as a Python integer.
-
-Minimize constraints (prefer SAT over faithfulness when ambiguous):
-- Choose ONE failing assertion/condition and encode only what is necessary to make it false.
-- Use tiny bounded domains (e.g., `N = 2`, indices in {0,1}).
-- You may represent `Vec<i32>` internally via namespaced scalar elements `__vec__arr1__0`, `__vec__arr1__1`, ... (optionally include `__vec__arr1__len`). The system will reconstruct an aggregated `"arr1": "vec![...]"` string from these; you do not need to emit it yourself. Legacy names like `arr1_0`/`arr1_len` are also accepted.
-- Summarize loops with a few relationships rather than unrolling; avoid quantifiers.
-Type modeling and ranges (MANDATORY):
-- Model Rust/Verus machine integer types using Z3 Int with explicit range constraints per variable. Add these type-domain constraints in addition to the translated invariants.
-- Use the following ranges (assume a 64-bit target for `usize`/`isize`). Prefer exponent form (use 2**k in Python to compute 2^k):
-  - bool: use Z3 Bool
-  - u8: 0 <= v <= 2^8 - 1
-  - u16: 0 <= v <= 2^16 - 1
-  - u32: 0 <= v <= 2^32 - 1
-  - u64: 0 <= v <= 2^64 - 1
-  - u128: 0 <= v <= 2^128 - 1
-  - i8: -(2^7) <= v <= 2^7 - 1
-  - i16: -(2^15) <= v <= 2^15 - 1
-  - i32: -(2^31) <= v <= 2^31 - 1
-  - i64: -(2^63) <= v <= 2^63 - 1
-  - i128: -(2^127) <= v <= 2^127 - 1
-  - usize: 0 <= v <= 2^64 - 1 (64-bit)
-  - isize: -(2^63) <= v <= 2^63 - 1 (64-bit)
-  - Verus `int`: unbounded Z3 Int (no range restriction)
-  - Verus `nat`: Z3 Int with v >= 0
-  Note: Do not model modular wraparound; just constrain variables to these ranges unless the invariant explicitly states overflow behavior.
-
-Additional required behavior (to make parsing robust):
-- The script MUST set a global variable `__z3_cex_status__` to one of the strings: `"sat"`, `"unsat"`, or `"unknown"`.
-- If `__z3_cex_status__ == "sat"`, the script MUST also set `__z3_cex_results__` to a JSON-serializable list of up to {num_cex} concrete variable assignments.
-- Ensure that each entry in `__z3_cex_results__` includes all variables (including arrays or vectors) from the proof or target loop, regardless of their involvement in the model solving process.
-- If `__z3_cex_status__ == "unsat"`, the script SHOULD NOT set `__z3_cex_result__` (or may set it to an explanatory string/dict). The caller will treat this as no counterexample.
-- If `__z3_cex_status__ == "unknown"`, the script indicates it could not determine satisfiability.
-- The script should be self-contained, import `z3`, and at the end only set these globals and exit; avoid printing extraneous text.
-
-Rust/Verus proof code:
-```rust
-{proof_content}
-```
-
-{extracted_loop_section}
-
-## Targeted Verification Error:
-- **Error Type of the Targeted Error**: {verus_error.error.name}
-- **Error Message of the Targeted Error**: {focused_error_text}
-
-Full verifier console output (for context):
-```
-{full_error_text}
-```
-At the end, when counterexamples exist, set `__z3_cex_status__ = "sat"` and `__z3_cex_results__ = [ {{"x": 1, "y": 2}} ]` (example, up to {num_cex}). Ensure all values are JSON serializable.
-"""
-    return prompt

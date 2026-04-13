@@ -1,0 +1,60 @@
+# Mutator: wrong_fact
+
+Task: Remove or minimally weaken invariants/assertions that are contradicted by the counterexample(s).
+Do not change executable code or requires/ensures. Keep changes minimal and sound.
+
+{% include "pipeline/mut_val/common_rules.j2" %}
+
+Few-shot mutations:
+Example 1 (Correcting an off-by-one in a quantifier):
+Before: invariant forall|k: int| 0 <= k < i ==> a[k] > 0
+After:  invariant forall|k: int| 0 <= k < i-1 ==> a[k] > 0
+Why: The counterexample shows the property fails for k == i-1. The invariant is only true for the elements before the current one being processed.
+
+Example 2 (Relax strict bound):
+Before: invariant sum <= target
+After:  invariant sum <= target + 1
+Why: Off-by-one at initialization; relax by the minimal constant allowed by the logic.
+
+Example 3 (Drop domain-mismatched clause):
+Before: invariant xs.len() == n && n >= 0
+After:  invariant n >= 0
+Why: xs.len() equals array length not modeled; the clause contradicts the setup.
+
+Example 4 (Weaken implication guard):
+Before: invariant a > 0 ==> b/a >= c
+After:  invariant a != 0 ==> b/a >= c
+Why: The counterexample shows a < 0 but nonzero is sufficient for the division safety used here.
+
+Example 5 (Adjusting a quantifier's range to match logic):
+Before: invariant forall|j: nat| 0 <= j < i ==> processed(items[j])
+After:  invariant forall|j: nat| start <= j < i ==> processed(items[j])
+Why: The loop starts processing from a non-zero offset `start`. The counterexample showed a failure for `j < start`, where items are not yet processed.
+
+Current proof:
+```rust
+{{ proof_content }}
+```
+
+Inferred verdict rationale:
+{{ verdict_rationale }}
+
+Error: {{ error_type }} — {{ error_message }}
+Console output:
+```
+{{ console_error_msg }}
+```
+Counterexamples:
+```
+{{ cex_info }}
+```
+Original (reference, DO NOT change code/specs):
+```rust
+{{ original_proof }}
+```
+Unified diff (reference for unintended edits):
+```diff
+{{ diff }}
+```
+
+Output the fixed proof with updated invariants, wrapped in a single Rust block ```rust <code>``` in the end and a brief explanation of what you changed and why.

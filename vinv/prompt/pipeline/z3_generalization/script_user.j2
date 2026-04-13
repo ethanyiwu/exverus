@@ -1,0 +1,71 @@
+Given the following Rust/Verus proof and a verification error, write a Python script (only code)
+that uses the Python Z3 API to perform inductive generalization in the spirit of IC3.
+
+You must implement two key ideas at a high level: MIC (Minimal Inductive Clause) and ctgDown.
+You DO NOT need to perfectly model the entire program. Focus only on the failing loop/location
+related to the error, capturing a small local transition approximation sufficient to guide
+generalization. Be concrete and minimal.
+
+Definitions and goals (high-level):
+- Seed cube: a conjunction of literals over relevant state at the failing point. If a concrete
+  counterexample or multiple counterexamples are provided, derive the initial cube(s) from them. Otherwise, propose a plausible
+  initial clause from the error context.
+- MIC (Minimal Inductive Clause): iteratively attempt to drop literals from the current clause.
+  For a candidate drop, check relative inductiveness by encoding that the clause holds before the
+  transition and fails after the transition. If UNSAT, the drop is safe; keep it dropped. Repeat
+  until no more safe drops exist.
+- ctgDown (counterexample-to-generalization): when a drop is not safe, produce a witness (model)
+  showing the violation and then try to weaken other parts of the clause guided by that witness.
+  Iterate between MIC and ctgDown until convergence or a small attempt budget is reached.
+
+What to encode in Z3 (be practical and minimal):
+- Declare Z3 variables for the relevant state (Int, Bool, Arrays if needed). Also declare primed
+  versions for post-state when needed.
+- Translate only the loop invariants and core updates from the loop body (assignments/relations)
+  that are necessary to run the inductiveness checks. You can approximate or omit details that are
+  irrelevant to the variables in the clause.
+- Relative inductiveness check template (conceptual): C(pre) ∧ T(pre, post) ∧ ¬C(post) should be
+  UNSAT for C to be inductive relative to T. Use this pattern to test whether dropping a literal
+  preserves inductiveness.
+
+Script behavior requirements:
+1) The script must `import z3` and construct the necessary Z3 variables and constraints.
+2) Implement a small loop that attempts MIC drops on literals of the current clause.
+3) When a drop fails (SAT), use the model as ctgDown witness to try weakening other literals or
+   adjusting the clause, then continue MIC.
+4) Stop when you reach a fixed point or a small attempt budget (e.g., up to 8 tries).
+5) At the end, set the following global variables:
+   - __z3_genz_status__ = "sat" | "unsat" | "unknown"
+   - __z3_genz_clause__ = a JSON-serializable structure or string representing the final generalized clause.
+   - __z3_genz_notes__ = optional string that summarizes which literals were dropped and any ctgDown witnesses used.
+6) If a concrete counterexample is provided, use it to form the seed cube; otherwise synthesize a
+   reasonable initial clause from the error context.
+7) Keep the transition relation minimal and local to the failing loop; do not over-constrain.
+8) Do not print extraneous output; only set the globals.
+9) If multiple counterexamples are provided, incorporate all of them when forming the seed cube(s) and use them to guide ctgDown so the resulting clause is consistent with all.
+
+Rust/Verus proof code:
+```rust
+{{ proof_content }}
+```
+
+Targeted verification error:
+- Error Type: {{ error_type }}
+- Error Message: {{ error_message }}
+
+Full verifier console output (for context):
+```
+{{ console_error_msg }}
+```
+
+Counterexamples (if any):
+```
+{{ cex_info }}
+```
+
+Implementation hints:
+- Prefer small integers and simple linear relations.
+- Use helper functions inside the script to evaluate C(pre), C(post), T(pre, post).
+- Use a literal list for the clause so you can try removing one literal at a time.
+- For ctgDown, inspect the Z3 model returned when a drop is SAT and adjust the clause by
+  weakening another literal consistent with the model.

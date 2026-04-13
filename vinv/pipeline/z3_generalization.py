@@ -18,6 +18,7 @@ from loguru import logger
 from veval import VerusError
 
 from vinv.gen.client import request_prompt_one
+from vinv.gen.prompt_utils import render_prompt
 from vinv.pipeline.counter_example import CounterExample
 from vinv.pipeline.simple_generalization import simple_cex_generalization
 from vinv.pipeline.z3_utils import run_z3_script_with_timeout
@@ -72,23 +73,16 @@ def z3_cex_generalization(
 
             user_prompt = base_prompt
             if last_error_msg or last_response:
-                feedback = (
-                    "Previous attempt feedback:\n"
-                    f"Execution error or issue: {last_error_msg}\n\n"
-                    f"Previous assistant response (truncated to last 4KB):\n{last_response[-4096:]}\n\n"
-                    "Please correct the Python Z3 script accordingly."
+                user_prompt = render_prompt(
+                    "pipeline/z3_generalization/script_retry_user.j2",
+                    last_error_msg=last_error_msg,
+                    last_response=last_response[-4096:],
+                    base_prompt=base_prompt,
                 )
-                user_prompt = feedback + "\n\n" + base_prompt
 
             response_text = request_prompt_one(
                 user_prompt,
-                system=(
-                    "You are an IC3-style inductive generalization expert and "
-                    "Python Z3 power user. Your job is to produce a Python "
-                    "script (only code) that performs MIC and ctgDown style "
-                    "generalization given a failing proof context, then outputs "
-                    "the final clause via globals."
-                ),
+                system=render_prompt("pipeline/z3_generalization/script_system.j2"),
                 model=model,
                 max_retry=5,
                 temperature=1.0,
@@ -196,13 +190,7 @@ def z3_cex_generalization(
 
         response_text2 = request_prompt_one(
             verus_prompt,
-            system=(
-                "You are an expert in Rust/Verus verification. Your task is to "
-                "repair the proof by strengthening or adjusting loop invariants "
-                "and/or intermediate assertions using the provided inductive "
-                "clause. Do not change executable code or requires/ensures "
-                "specifications."
-            ),
+            system=render_prompt("pipeline/z3_generalization/injection_system.j2"),
             model=model,
             max_retry=5,
             temperature=1.0,
@@ -242,86 +230,14 @@ def create_mic_ctg_z3_prompt(
             cex_info = json.dumps([cex.to_dict() for cex in counter_examples], indent=2)
         except Exception:
             cex_info = str(counter_examples)
-
-    prompt = f"""
-Given the following Rust/Verus proof and a verification error, write a Python script (only code)
-that uses the Python Z3 API to perform inductive generalization in the spirit of IC3.
-
-You must implement two key ideas at a high level: MIC (Minimal Inductive Clause) and ctgDown.
-You DO NOT need to perfectly model the entire program. Focus only on the failing loop/location
-related to the error, capturing a small local transition approximation sufficient to guide
-generalization. Be concrete and minimal.
-
-Definitions and goals (high-level):
-- Seed cube: a conjunction of literals over relevant state at the failing point. If a concrete
-  counterexample or multiple counterexamples are provided, derive the initial cube(s) from them. Otherwise, propose a plausible
-  initial clause from the error context.
-- MIC (Minimal Inductive Clause): iteratively attempt to drop literals from the current clause.
-  For a candidate drop, check relative inductiveness by encoding that the clause holds before the
-  transition and fails after the transition. If UNSAT, the drop is safe; keep it dropped. Repeat
-  until no more safe drops exist.
-- ctgDown (counterexample-to-generalization): when a drop is not safe, produce a witness (model)
-  showing the violation and then try to weaken other parts of the clause guided by that witness.
-  Iterate between MIC and ctgDown until convergence or a small attempt budget is reached.
-
-What to encode in Z3 (be practical and minimal):
-- Declare Z3 variables for the relevant state (Int, Bool, Arrays if needed). Also declare primed
-  versions for post-state when needed.
-- Translate only the loop invariants and core updates from the loop body (assignments/relations)
-  that are necessary to run the inductiveness checks. You can approximate or omit details that are
-  irrelevant to the variables in the clause.
-- Relative inductiveness check template (conceptual): C(pre) ∧ T(pre, post) ∧ ¬C(post) should be
-  UNSAT for C to be inductive relative to T. Use this pattern to test whether dropping a literal
-  preserves inductiveness.
-
-Script behavior requirements:
-1) The script must `import z3` and construct the necessary Z3 variables and constraints.
-2) Implement a small loop that attempts MIC drops on literals of the current clause.
-3) When a drop fails (SAT), use the model as ctgDown witness to try weakening other literals or
-   adjusting the clause, then continue MIC.
-4) Stop when you reach a fixed point or a small attempt budget (e.g., up to 8 tries).
-5) At the end, set the following global variables:
-   - __z3_genz_status__ = "sat" | "unsat" | "unknown" (use "sat" if you found a clause and checks
-     were satisfiable in some steps; use "unsat" if generalization proves unsatisfiable, otherwise
-     "unknown" if undecided).
-   - __z3_genz_clause__ = a JSON-serializable structure or string representing the final generalized
-     clause (e.g., a string like "0 <= i && i <= n" or a list of literal strings). Keep it simple.
-   - __z3_genz_notes__ = optional string that summarizes which literals were dropped and any ctgDown
-     witnesses used.
-6) If a concrete counterexample is provided, use it to form the seed cube; otherwise synthesize a
-   reasonable initial clause from the error context.
-7) Keep the transition relation minimal and local to the failing loop; do not over-constrain.
-8) Do not print extraneous output; only set the globals.
-  Additional note: If multiple counterexamples are provided, incorporate all of them when forming
-  the seed cube(s) and use them to guide ctgDown so the resulting clause is consistent with all.
-
-Rust/Verus proof code:
-```rust
-{proof_content}
-```
-
-Targeted verification error:
-- Error Type: {verus_error.error.name}
-- Error Message: {verus_error.get_text()}
-
-Full verifier console output (for context):
-```
-{console_error_msg}
-```
-
-Counterexamples (if any):
-```
-{cex_info}
-```
-
-Implementation hints:
-- Prefer small integers and simple linear relations.
-- Use helper functions inside the script to evaluate C(pre), C(post), T(pre, post).
-- Use a literal list for the clause so you can try removing one literal at a time.
-- For ctgDown, inspect the Z3 model returned when a drop is SAT and adjust the clause by
-  weakening another literal consistent with the model.
-"""
-    return prompt
+    return render_prompt(
+        "pipeline/z3_generalization/script_user.j2",
+        proof_content=proof_content,
+        error_type=verus_error.error.name,
+        error_message=verus_error.get_text(),
+        console_error_msg=console_error_msg,
+        cex_info=cex_info,
+    )
 
 
 def create_verus_injection_prompt(
@@ -337,70 +253,14 @@ def create_verus_injection_prompt(
     Create a prompt to inject the generalized clause into the Verus proof by fixing
     loop invariants. We enforce strict editing rules to avoid changing executable code/specs.
     """
-    prompt = f"""
-# Proof Repair via Inductive Generalization (Injection Stage)
-
-You are given a Rust/Verus proof with a verification failure. A previously executed MIC+ctgDown
-procedure (using Z3) produced a generalized clause that should be incorporated into the proof by
-strengthening loop invariants or related proof annotations.
-
-Generalized clause to inject (treat as Verus boolean expression or a small set of literals):
-```
-{generalized_clause}
-```
-
-Optional notes/witnesses from ctgDown:
-```
-{ctg_notes}
-```
-
-## Current Proof Code
-```rust
-{proof_content}
-```
-
-## Targeted Verification Error
-- Error Type: {verus_error.error.name}
-- Error Message: {verus_error.get_text()}
-
-Full verifier console output (for context):
-```
-{console_error_msg}
-```
-
-Original (unverified) proof for reference:
-```rust
-{original_proof}
-```
-
-Unified diff between the above original proof and the current proof under analysis (for spotting unintended changes):
-```
-{diff}
-```
-
-## CRITICAL RULES - NEVER MODIFY
-1. Any executable code (logic, control flow, expressions, statements)
-2. Function signatures or parameters
-3. Requires/ensures function specifications
-4. Return values or types
-5. Never use data type casts (e.g., `i as usize`, `i as int`) in loop invariants
-
-## What you CAN modify
-1. Loop invariants — strengthen/adjust using the generalized clause
-2. Decreases clauses — only if needed for termination and consistent with logic
-3. Intermediate assertions — add/modify to help establish or preserve invariants
-4. Proof annotations — assert statements and lemma calls inside proof blocks
-
-## Your Task
-- Identify the relevant loop/location causing the error and strengthen its invariant(s) by
-  incorporating the provided generalized clause. Maintain minimal edits and keep semantics intact.
-- Ensure the resulting invariants are inductive and help resolve the reported failure.
-- Provide the COMPLETE, FULL repaired Rust/Verus code in a single fenced code block:
-
-```rust
-// full repaired code here
-```
-
-Then briefly explain the changes and why they fix the issue.
-"""
-    return prompt
+    return render_prompt(
+        "pipeline/z3_generalization/injection_user.j2",
+        generalized_clause=generalized_clause,
+        ctg_notes=ctg_notes,
+        proof_content=proof_content,
+        error_type=verus_error.error.name,
+        error_message=verus_error.get_text(),
+        console_error_msg=console_error_msg,
+        original_proof=original_proof,
+        diff=diff,
+    )

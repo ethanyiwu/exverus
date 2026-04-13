@@ -24,6 +24,7 @@ from vinv.gen.client import (
     request_prompt_multi_response,
     request_prompt_one,
 )
+from vinv.gen.prompt_utils import render_prompt
 from vinv.pipeline.counter_example import CounterExample
 from vinv.pipeline.parser_utils import (
     error_inside_loop,
@@ -37,17 +38,6 @@ from vinv.utils import check_status, extract_rs_code_from_response
 from vinv.verus_utils import record_verify_status
 
 Verdict = Literal["wrong_fact", "too_weak", "other"]
-
-COMMON_RULES = """
-CRITICAL RULES - NEVER MODIFY:
-1. Any executable code (logic, control flow, variables, expressions, statements)
-2. Function signatures or parameters
-3. Requires/ensures function specifications
-4. Return values or types
-5. NEVER use data type casts (e.g., `i as usize`, `i as int`) in loop invariants
-6. Never use `old` in the loop invariant
-"""
-
 
 def mut_val_cex_generalization(
     proof_file: Path,
@@ -121,25 +111,9 @@ def mut_val_cex_generalization(
         (try_dir / "mut_val_mutator_base_prompt.txt").write_text(base_mut_prompt)
 
         # Batch-generate multiple mutations and collect the first max_candidates that compile
-        system_prompt = """
-        You are an expert in Rust/Verus invariants. Propose minimal, semantically-meaningful mutations to
-        invariants/assertions only that address the counterexamples. Keep pre/post and executable code
-        unchanged. Output the COMPLETE fixed code in a single fenced Rust block (in the end) and a brief
-        explanation of what you changed and why.
-        CRITICAL RULES - NEVER MODIFY:
-        1. Any executable code (logic, control flow, expressions, statements)
-        2. Function signatures or parameters
-        3. Requires/ensures function specifications
-        4. Return values or types
-        5. Never use data type casts (e.g., `i as usize`, `i as int`) in loop invariants
-        6. Never use `old` in the loop invariant
-        7. If there are counterexamples provided, please show how counterexamples help you come up with the mutation.
-        Note:
-        1. When `#[verifier::loop_isolation(false)]` is specified, the loop is not isolated and the invariants/assertions are shared between loops, thus if a correct invariant got "invariant not satisfied before loop" error, maybe some dependent invariant in prior loops is missing and should be added.
-        """
         responses = request_prompt_multi_response(
             base_mut_prompt,
-            system=system_prompt,
+            system=render_prompt("pipeline/mut_val/batch_system.j2"),
             model=model,
             max_retry=5,
             temperature=1.0,
@@ -501,65 +475,19 @@ def infer_verdict(
         except Exception:
             cex_info = str(counter_examples)
 
-    knowledge = (
-        "- If the error is `invariant not satisfied before loop`, the invariant is likely a wrong fact and needs to be weakened or removed. Or it is missing a fact that was not explicitly stated previously, e.g., not stated in prior loops.\n"
-        "- If the error is `invariant not satisfied at end of loop body`, the invariant could be a wrong fact or correct but too weak; propose strengthening if plausible or replace it with a correct one.\n"
-        "- PreCondFailVecLen, PreCondFail, and ArithmeticFlow often indicate missing bounds over array indices or variables, suggesting the invariant is too weak.\n"
-        "- If all invariants are correct, the error is likely other.\n"
-        "- If an invariant is a correct fact but still got `invariant not satisfied before loop` error, it's possible that an dependent invariant/fact is not stated in prior loops and should be added.\n"
-        "- `old` is not allowed in the loop invariant.\n"
-        "- For errors not related to invariants or bound overflow/underflow, the error is likely other.\n"
-        "- For `other` error, when the invariants look correct, we likely need to add/fix some assertions to fix it."
-        "- The provided counterexamples are not necessarily reachable states, they could be spurious states that satisfy the invariants but fail the invariants after one iteration."
-        "- No counterexamples provided does not mean there are no counterexamples."
+    prompt = render_prompt(
+        "pipeline/mut_val/verdict_user.j2",
+        proof_content=proof_content,
+        error_type=verus_error.error.name,
+        error_message=verus_error.get_text(),
+        console_error_msg=console_error_msg,
+        cex_info=cex_info,
     )
-
-    prompt = f"""
-# Verdict Inference for Invariant Repair
-
-Classify the failure into one of: wrong_fact, too_weak, other.
-
-Given:
-- Proof:
-```rust
-{proof_content}
-```
-- Error Type: {verus_error.error.name}
-- Error Message: {verus_error.get_text()}
-- Console output:
-```
-{console_error_msg}
-```
-
-Counterexamples (if any):
-```
-{cex_info}
-```
-
-Please reason step by step on whether the counterexamples are reachable states or spurious states.
-
-Domain knowledge:
-{knowledge}
-
-Instructions:
-1) Decide whether the invariant/assertion is a wrong_fact, too_weak, or other. Use the knowledge above.
-2) Consider CE reachability: real/reachable => wrong_fact; spurious => too_weak.
-3) InvFailFront is usually wrong_fact (but not always); InvFailEnd can be either wrong_fact or too_weak.
-4) PreCondFailVecLen, PreCondFail, and ArithmeticFlow usually imply too_weak (missing bounds).
-5) If there are counterexamples provided, please show how counterexamples help you decide the verdict.
-
-Output strictly as JSON:
-{{"verdict": "wrong_fact|too_weak|other", "rationale": "..."}}
-"""
 
     (try_dir / "mut_val_verdict_prompt.txt").write_text(prompt)
     response = request_prompt_one(
         prompt,
-        system=(
-            "You are an expert in Rust/Verus verification. Infer "
-            "classification labels precisely and respond only with the "
-            "requested JSON."
-        ),
+        system=render_prompt("pipeline/mut_val/verdict_system.j2"),
         model=model,
         max_retry=5,
         temperature=1.0,
@@ -581,80 +509,23 @@ def create_mutator_prompt_wrong_fact(
     diff: str,
     verdict_rationale: Optional[str] = None,
 ) -> str:
-    examples = """
-Example 1 (Correcting an off-by-one in a quantifier):
-Before: invariant forall|k: int| 0 <= k < i ==> a[k] > 0
-After:  invariant forall|k: int| 0 <= k < i-1 ==> a[k] > 0
-Why: The counterexample shows the property fails for k == i-1. The invariant is only true for the elements *before* the current one being processed.
-
-Example 2 (Relax strict bound):
-Before: invariant sum <= target
-After:  invariant sum <= target + 1
-Why: Off-by-one at initialization; relax by minimal constant allowed by logic.
-
-Example 3 (Drop domain-mismatched clause):
-Before: invariant xs.len() == n && n >= 0
-After:  invariant n >= 0
-Why: xs.len() equals array length not modeled; clause contradicts setup.
-
-Example 4 (Weaken implication guard):
-Before: invariant a > 0 ==> b/a >= c
-After:  invariant a != 0 ==> b/a >= c
-Why: CE shows a<0 but nonzero is sufficient for division safety used here.
-
-Example 5 (Adjusting a quantifier's range to match logic):
-Before: invariant forall|j: nat| 0 <= j < i ==> processed(items[j])
-After:  invariant forall|j: nat| start <= j < i ==> processed(items[j])
-Why: The loop starts processing from a non-zero offset `start`. The counterexample showed a failure for `j < start`, where items are not yet processed. The invariant must reflect the actual range of work.
-"""
-
     cex_info = ""
     if counter_examples is not None:
         try:
             cex_info = json.dumps([cex.to_dict() for cex in counter_examples], indent=2)
         except Exception:
             cex_info = str(counter_examples)
-
-    prompt = f"""
-# Mutator: wrong_fact
-
-Task: Remove or minimally weaken invariants/assertions that are contradicted by the counterexample(s).
-Do not change executable code or requires/ensures. Keep changes minimal and sound.
-
-{COMMON_RULES}
-
-Few-shot mutations:
-{examples}
-
-Current proof:
-```rust
-{proof_content}
-```
-
-Inferred verdict rationale:
-{verdict_rationale or ''}
-
-Error: {verus_error.error.name} — {verus_error.get_text()}
-Console output:
-```
-{console_error_msg}
-```
-Counterexamples:
-```
-{cex_info}
-```
-Original (reference, DO NOT change code/specs):
-```rust
-{original_proof}
-```
-Unified diff (reference for unintended edits):
-```
-{diff}
-```
-
-Output the fixed proof with updated invariants, wrapped in a single Rust block ```rust <code>``` in the end and a brief explanation of what you changed and why.
-"""
-    return prompt
+    return render_prompt(
+        "pipeline/mut_val/wrong_fact_user.j2",
+        proof_content=proof_content,
+        verdict_rationale=verdict_rationale or "",
+        error_type=verus_error.error.name,
+        error_message=verus_error.get_text(),
+        console_error_msg=console_error_msg,
+        cex_info=cex_info,
+        original_proof=original_proof,
+        diff=diff,
+    )
 
 
 def create_mutator_prompt_too_weak(
@@ -666,80 +537,23 @@ def create_mutator_prompt_too_weak(
     diff: str,
     verdict_rationale: Optional[str] = None,
 ) -> str:
-    examples = """
-Example 1 (Add a bound needed for an operation inside the loop):
-Before: invariant 0 <= i <= N
-After:  invariant 0 <= i <= N && N < 1024
-Why: An operation inside the loop fails because `N` can be too large, causing an overflow or assertion failure. A function precondition bounds it, and this fact must be carried into the invariant to be available inside the loop. The `N` could come from a function precondition but the invariant must restate it explicitly to be available inside the loop.
-
-Example 2 (Index coupling/progress):
-Before: invariant 0 <= i && i <= n
-After:  invariant 0 <= i && i <= n && j <= i
-Why: Ensure the inner index j never exceeds the processed prefix; blocks the CE.
-
-Example 3 (Update quantifier range to match logic):
-Before: invariant forall|j: nat| start <= j < i ==> processed(items[j])
-After:  invariant forall|j: nat| 0 <= j < i ==> processed(items[j])
-Why: The loop starts processing from a non-zero offset `start`. The invariant must reflect the actual range of work. While `forall|j: nat| start <= j < i ==> processed(items[j])` is correct, it is not inductive and strong enough to preserve itself.
-
-Example 4 (Couple loop variables to maintain a key relationship):
-Before: invariant 0 <= read_idx <= v.len() && 0 <= write_idx <= v.len()
-After:  invariant 0 <= write_idx <= read_idx <= v.len()
-Why: The algorithm's correctness depends on the write pointer never overtaking the read pointer. This coupling `write_idx <= read_idx` was missing, leading to a spurious counterexample.
-
-Example 5 (Connect a boolean flag to an existential property):
-Before: invariant 0 <= i <= v.len()
-After:  invariant 0 <= i <= v.len() && (found ==> exists|k: int| 0 <= k < i && v[k] == target)
-Why: To prove the postcondition, the verifier must know *why* the `found` flag is true. This clause strengthens the invariant by linking the flag to the property it represents: that the target has been seen in the processed prefix.
-"""
-
     cex_info = ""
     if counter_examples is not None:
         try:
             cex_info = json.dumps([cex.to_dict() for cex in counter_examples], indent=2)
         except Exception:
             cex_info = str(counter_examples)
-
-    prompt = f"""
-# Mutator: too_weak
-
-Task: Strengthen invariants minimally to make them inductive. Prefer semantic patterns (progress, guards, coupling) that block the CE and generalize.
-Do not change executable code or requires/ensures.
-
-{COMMON_RULES}
-
-Few-shot mutations:
-{examples}
-
-Current proof:
-```rust
-{proof_content}
-```
-
-Inferred verdict rationale:
-{verdict_rationale or ''}
-
-Error: {verus_error.error.name} — {verus_error.get_text()}
-Console output:
-```
-{console_error_msg}
-```
-Counterexamples:
-```
-{cex_info}
-```
-Original (reference, DO NOT change code/specs):
-```rust
-{original_proof}
-```
-Unified diff (reference for unintended edits):
-```
-{diff}
-```
-
-Output the fixed proof with updated invariants, wrapped in a single Rust block ```rust <code>``` in the end and a brief explanation of what you changed and why.
-"""
-    return prompt
+    return render_prompt(
+        "pipeline/mut_val/too_weak_user.j2",
+        proof_content=proof_content,
+        verdict_rationale=verdict_rationale or "",
+        error_type=verus_error.error.name,
+        error_message=verus_error.get_text(),
+        console_error_msg=console_error_msg,
+        cex_info=cex_info,
+        original_proof=original_proof,
+        diff=diff,
+    )
 
 
 def create_mutator_prompt_other(
@@ -751,215 +565,23 @@ def create_mutator_prompt_other(
     diff: str,
     verdict_rationale: Optional[str] = None,
 ) -> str:
-    examples = """
-Example 1 (Add `reveal` to unfold an opaque spec function):
-Before: // Fails to prove inductiveness of the `filter` invariant
-    while (i < xlen)
-        invariant
-            y@ == x@.take(i as int).filter(|k:u64| k%3 == 0),
-    {
-        if (x[i] % 3 == 0) { y.push(x[i]); }
-        i = i + 1;
-    }
-After:
-    while (i < xlen)
-        invariant
-            y@ == x@.take(i as int).filter(|k:u64| k%3 == 0),
-    {
-        if (x[i] % 3 == 0) { y.push(x[i]); }
-        reveal(Seq::filter); // <-- ADDED
-        i = i + 1;
-    }
-Why: The verifier treats `Seq::filter` as an uninterpreted function by default. Adding `reveal(Seq::filter)` exposes its definition, allowing the SMT solver to understand how `y.push` correctly maintains the invariant.
-
-Example 2 (Add a bridging `assert` for sequence induction):
-Before: // Fails with InvFailEnd because the relation between states is not obvious
-    while index < arr.len()
-        invariant
-            sum == sum_to(arr@.subrange(start as int, index as int)),
-    {
-        sum = sum + arr[index] as i128;
-        index += 1;
-    }
-After:
-    while index < arr.len()
-        invariant
-            sum == sum_to(arr@.subrange(start as int, index as int)),
-    {
-        // ADDED a bridging assertion (lemma)
-        assert(arr@.subrange(start as int, index as int) == arr@.subrange(
-            start as int, (index + 1) as int).drop_last());
-        sum = sum + arr[index] as i128;
-        index += 1;
-    }
-Why: The verifier needs help connecting the sequence `subrange(..., index)` before the update to `subrange(..., index + 1)` after. This `assert` states a trivial but necessary lemma about sequence operations that bridges the inductive step.
-
-Of course, here is the example in plain text format.
-
-Example 3 (Introduce a proof block and helper lemma for a complex property)
-
-Before:
-This code fails with an InvFailEnd error. The verifier cannot prove that the uniqueness invariant is maintained after result.push(...).
-
-// Fails to prove the uniqueness invariant is preserved
-while index < arr.len()
-invariant
-// Invariant states that all elements in result so far are unique
-forall|m: int, n: int|
-0 <= m < n < result.len() ==> #[trigger] result[m] != #[trigger] result[n],
-{
-if !contains(&result, arr[index]) {
-// The verifier gets stuck here. It doesn't know that if result
-// is unique and arr[index] isn't in result, then pushing
-// arr[index] onto result creates a new, still-unique vector.
-result.push(arr[index]);
-}
-index += 1;
-}
-
-After:
-The fix is to write a lemma that formalizes the exact logical step the verifier is missing and then apply that lemma in a proof block right before the code that needs it.
-
-// ADDED: A dedicated proof function (lemma) that explains how uniqueness is preserved.
-proof fn lemma_push_preserves_uniqueness<T>(seq: Seq<T>, item: T)
-requires
-// Condition 1: The original sequence is unique
-(forall|m: int, n: int| 0 <= m < n < seq.len() ==> #[trigger] seq[m] != #[trigger] seq[n]),
-// Condition 2: The new item is not already in the sequence
-!seq.contains(item),
-ensures
-// Result: The new sequence after pushing the item is also unique
-(forall|m: int, n: int| 0 <= m < n < seq.push(item).len() ==>
-#[trigger] seq.push(item)[m] != #[trigger] seq.push(item)[n]),
-{}
-
-// ... inside the function body ...
-
-while index < arr.len()
-invariant
-forall|m: int, n: int|
-0 <= m < n < result.len() ==> #[trigger] result[m] != #[trigger] result[n],
-{
-if !contains(&result, arr[index]) {
-// ADDED: A proof block to apply the lemma, giving the verifier the missing step.
-proof {
-lemma_push_preserves_uniqueness(result@, arr[index]);
-}
-result.push(arr[index]);
-}
-index += 1;
-}
-
-Why:
-The verifier is not powerful enough to automatically deduce that pushing a new, distinct element onto a unique sequence preserves its uniqueness. This logical step, while obvious to us, must be stated explicitly. The fix involves two parts:
-
-We write a proof fn (a lemma) that formally states this property. It says, "If a sequence is unique and an item is not in it, then the new sequence formed by pushing the item is also unique."
-
-We then call this lemma inside a proof block immediately before the result.push() call. This acts as a direct hint to the verifier, providing it with the exact piece of reasoning it needs to prove that the loop invariant holds for the next iteration.
-
-Example 4 (Add a `trigger` to a `forall` invariant to guide the solver):
-Before: // Fails to use the invariant to prove a property, causing an overflow check to fail
-    while index < arr.len()
-        invariant
-            forall|j: int| 0 <= j <= index ==> sum_negative_to(arr@.subrange(0, j)) <= 0,
-            sum_negative_to(arr@.subrange(0, index as int)) == sum_neg,
-    { ... }
-After:
-    while index < arr.len()
-        invariant
-            forall|j: int| 0 <= j <= index ==> sum_negative_to(#[trigger] arr@.subrange(0, j)) <= 0,
-            sum_negative_to(arr@.subrange(0, index as int)) == sum_neg,
-    { ... }
-Why: The verifier didn't know when to apply the `forall` invariant. Adding `#[trigger]` to `arr@.subrange(0, j)` tells the solver to instantiate this rule whenever it sees a term of that shape, which is essential for proving the arithmetic is safe.
-
-Example 5 (Add a hint `assert` to prove a custom spec function's inductive step)
-
-Before:
-*This code fails to prove its postcondition. The verifier understands the loop invariant `res == is_prime_so_far(...)` but cannot automatically deduce how the line `res = res && n % k != 0` successfully maintains that invariant for the next iteration (`k+1`).*
-
-// Fails because the inductive step for `is_prime_so_far` is not obvious to the verifier.
-while (k < n)
-    invariant
-        2 <= k <= n,
-        res == is_prime_so_far(n as nat, k as nat),
-    decreases n - k,
-{
-    // The verifier doesn't automatically connect this update
-    // to the definition of `is_prime_so_far(n, k+1)`.
-    res = res && n % k != 0;
-    k = k + 1;
-}
-
-After:
-*The fix is to add an `assert` that explicitly states the relationship between `is_prime_so_far(n, k)` and `is_prime_so_far(n, k+1)`. This gives the verifier the missing logical step.*
-
-// ... inside the function body ...
-while (k < n)
-    invariant
-        2 <= k <= n,
-        res == is_prime_so_far(n as nat, k as nat),
-    decreases n - k,
-{
-    // ADDED: An assertion that acts as a lemma for the spec function's inductive step.
-    assert((is_prime_so_far(n as nat, k as nat) && (n as nat) % (k as nat) != 0)
-        == is_prime_so_far(n as nat, (k + 1) as nat));
-    res = res && n % k != 0;
-    k = k + 1;
-}
-
-Why:
-Custom `spec` functions, like `is_prime_so_far`, can be opaque to the verifier. While it knows the function's definition, it doesn't automatically derive complex properties, such as how the function's result for `k` relates to its result for `k+1`.
-
-The added `assert` statement acts as a **lemma** or a **hint**. It explicitly proves the inductive step for the `spec` function, stating that "being prime up to `k+1` is the same as being prime up to `k` and also not being divisible by `k`." By providing this missing logical connection, the `assert` allows the verifier to understand how the code in the loop body correctly maintains the invariant, which is necessary to ultimately prove the function's postcondition.
-"""
-
     cex_info = ""
     if counter_examples is not None:
         try:
             cex_info = json.dumps([cex.to_dict() for cex in counter_examples], indent=2)
         except Exception:
             cex_info = str(counter_examples)
-
-    prompt = f"""
-# Mutator: other
-
-Task: Make minimal, semantically meaningful invariant/assertion adjustments to address the failure while preserving behavior and specs.
-Do not change executable code or requires/ensures.
-
-{COMMON_RULES}
-
-Few-shot mutations:
-{examples}
-
-Current proof:
-```rust
-{proof_content}
-```
-
-Inferred verdict rationale:
-{verdict_rationale or ''}
-
-Error: {verus_error.error.name} — {verus_error.get_text()}
-Console output:
-```
-{console_error_msg}
-```
-Counterexamples:
-```
-{cex_info}
-```
-Original (reference, DO NOT change code/specs):
-```rust
-{original_proof}
-```
-Unified diff (reference for unintended edits):
-```
-{diff}
-```
-
-Output the fixed proof with updated invariants, wrapped in a single Rust block ```rust <code>``` in the end and a brief explanation of what you changed and why.
-"""
-    return prompt
+    return render_prompt(
+        "pipeline/mut_val/other_user.j2",
+        proof_content=proof_content,
+        verdict_rationale=verdict_rationale or "",
+        error_type=verus_error.error.name,
+        error_message=verus_error.get_text(),
+        console_error_msg=console_error_msg,
+        cex_info=cex_info,
+        original_proof=original_proof,
+        diff=diff,
+    )
 
 
 # ------------------------------ Validators ----------------------------------
