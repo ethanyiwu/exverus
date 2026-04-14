@@ -37,6 +37,19 @@ prepend_pythonpath() {
     esac
 }
 
+require_verus() {
+    if [[ -n "${VERUS_PATH-}" ]]; then
+        [[ -x "$VERUS_PATH" ]] && return 0
+        fail_setup "VERUS_PATH is not executable: $VERUS_PATH"
+        return 1
+    fi
+
+    VERUS_PATH="$(command -v verus 2>/dev/null || true)"
+    [[ -n "$VERUS_PATH" ]] && export VERUS_PATH && return 0
+    fail_setup $'Verus executable not found.\nSet VERUS_PATH=/path/to/verus or add `verus` to PATH before sourcing ./setup.sh.'
+    return 1
+}
+
 if ! is_sourced; then
     fail_setup $'Run this script with:\n  source ./setup.sh [--sync]'
 fi
@@ -60,8 +73,11 @@ if [[ -f "$ROOT_DIR/.venv/bin/activate" ]]; then
     source "$ROOT_DIR/.venv/bin/activate"
 fi
 
+require_verus || return 1
+
 export VINV_ROOT="$ROOT_DIR"
 
 echo "Environment ready."
 echo "ROOT_DIR=$ROOT_DIR"
 echo "PYTHONPATH=$PYTHONPATH"
+echo "VERUS_PATH=$VERUS_PATH"
