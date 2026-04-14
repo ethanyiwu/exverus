@@ -47,6 +47,7 @@ class TrajectoryRecorder:
             "generalization_strategy": genz_strategy,
             "num_cex": int(num_cex),
         }
+        self._iterations = {}
         # Load existing trajectory if present (support resume)
         if self._out_file.exists():
             try:
