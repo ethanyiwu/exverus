@@ -28,6 +28,7 @@ def simple_cex_generation(
     console_error_msg: str,
     model: str = "gpt-4o",
     num_cex: int = 10,
+    cex_validation_backend: str = "v2",
 ) -> Optional[List[CounterExample]]:
     """
     Generate counter examples using a simple, direct LLM prompting approach.

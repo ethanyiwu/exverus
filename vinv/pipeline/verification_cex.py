@@ -29,12 +29,15 @@ MARKER_PATTERN = r"//\s*place to add variables assignment\. \[(\d+)\]"
 
 def verification_cex_generation(
     failing_proof_file: Path,
+    extracted_loop_file: Path | None,
     verus_error,
     try_dir: Path,
     console_error_msg: str,
     model: str = "deepseek-reasoner",
+    num_cex: int = 10,
+    cex_validation_backend: str = "v2",
     z3_exec_timeout_seconds: int = 20,
-) -> Optional[CounterExample]:
+) -> Optional[List[CounterExample]]:
     """Generate counterexample using converted assume/assert code and Z3.
 
     Steps:
@@ -283,7 +286,7 @@ def verification_cex_generation(
                 f"Generated verification counter example on attempt {attempt}: {cex}"
             )
             cex_index += 1
-            return cex
+            return [cex]
 
         logger.error(
             f"Failed to generate a valid verification counterexample after {max_attempts} attempts."

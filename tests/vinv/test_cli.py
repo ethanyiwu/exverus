@@ -13,6 +13,7 @@ def test_root_help_lists_groups():
     assert result.exit_code == 0
     assert "analysis" in result.stdout
     assert "assume" in result.stdout
+    assert "autoverus" in result.stdout
     assert "pipeline" in result.stdout
 
 

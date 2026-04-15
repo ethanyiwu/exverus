@@ -25,6 +25,10 @@ from vinv.gen.client import (
     request_prompt_one,
 )
 from vinv.gen.prompt_utils import render_prompt
+from vinv.pipeline.cex_validation_backend import (
+    CexValidationBackend,
+    validate_blocking_list_with_backend,
+)
 from vinv.pipeline.counter_example import CounterExample
 from vinv.pipeline.parser_utils import (
     error_inside_loop,
@@ -33,7 +37,6 @@ from vinv.pipeline.parser_utils import (
     read_loop_id_from_extracted,
 )
 from vinv.pipeline.trajectory import recorder
-from vinv.pipeline.validator_extracted import validate_blocking_list_extracted
 from vinv.utils import check_status, extract_rs_code_from_response
 from vinv.verus_utils import record_verify_status
 
@@ -48,6 +51,7 @@ def mut_val_cex_generalization(
     original_proof_file: Path,
     diff: str,
     model: str = "gpt-4o",
+    cex_validation_backend: CexValidationBackend = "v2",
 ) -> Optional[Path]:
     """
     Generalize from counterexamples using LLM-based mutation and lightweight validation.
@@ -204,12 +208,13 @@ def mut_val_cex_generalization(
                                 verus_error,
                             )
                             if ok:
-                                results = validate_blocking_list_extracted(
+                                results = validate_blocking_list_with_backend(
                                     repaired_extracted_file=cand_extracted_file,
                                     counter_examples=counter_examples,
                                     validation_dir=cand_dir,
                                     baseline_results_path=baseline_dir
                                     / "batch_results.json",
+                                    backend=cex_validation_backend,
                                 )
                                 selected_blocked_count = sum(
                                     1 for r in results if bool(r.get("blocked"))
@@ -240,11 +245,12 @@ def mut_val_cex_generalization(
                 # If extraction failed, skip blocking evaluation for this mutant
                 if cand_extracted_ok and counter_examples:
                     try:
-                        results = validate_blocking_list_extracted(
+                        results = validate_blocking_list_with_backend(
                             repaired_extracted_file=cand_extracted_file,
                             counter_examples=counter_examples,
                             validation_dir=cand_dir,
                             baseline_results_path=baseline_dir / "batch_results.json",
+                            backend=cex_validation_backend,
                         )
                         blocked_count = sum(
                             1 for r in results if bool(r.get("blocked"))

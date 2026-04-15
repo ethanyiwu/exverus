@@ -7,14 +7,18 @@ from veval import VerusError, VerusErrorType, VEval
 
 from vinv.gen.client import request_prompt_one
 from vinv.gen.prompt_utils import make_unified_diff, render_prompt
+from vinv.pipeline.cex_validation_backend import (
+    CexValidationBackend,
+    prepare_extracted_harness,
+    validate_cex_list_with_backend,
+)
 from vinv.pipeline.counter_example import CounterExample, add_validate_status
 from vinv.pipeline.error_priority import sort_errors_by_priority
 from vinv.pipeline.mut_val_generalization import mut_val_cex_generalization
-from vinv.pipeline.parser_utils import error_inside_loop, extract_loop_for_error
+from vinv.pipeline.parser_utils import error_inside_loop
 from vinv.pipeline.simple_cex import simple_cex_generation
 from vinv.pipeline.simple_generalization import simple_cex_generalization
 from vinv.pipeline.trajectory import recorder
-from vinv.pipeline.validator_extracted import validate_cex_list_extracted
 from vinv.pipeline.verification_cex import verification_cex_generation
 from vinv.pipeline.z3_cex import z3_cex_generation
 from vinv.pipeline.z3_generalization import z3_cex_generalization
@@ -94,19 +98,20 @@ def cex_compilation_repair(
 
 # Signatures for strategies
 CexGenerationFunc = Callable[
-    [Path, Optional[Path], VerusError, Path, str, str, int],
+    [Path, Optional[Path], VerusError, Path, str, str, int, CexValidationBackend],
     Optional[List[CounterExample]],
 ]
 CexGeneralizationFunc = Callable[
     [
         Path,
         VerusError,
-        Optional[CounterExample],
+        Optional[List[CounterExample]],
         Path,
         str,
         Path,
         str,
         str,
+        CexValidationBackend,
     ],
     Optional[Path],
 ]
@@ -166,6 +171,7 @@ def generate_and_generalize(
     cex_generalization_strategy: Literal["z3", "simple", "mut_val"],
     num_cex: int,
     enable_validation: bool = True,
+    cex_validation_backend: CexValidationBackend = "v2",
 ) -> Tuple[Optional[Path], Optional[List[CounterExample]]]:
     """Run CEX generation and generalization as a single pipeline step.
 
@@ -177,14 +183,12 @@ def generate_and_generalize(
         harness_before_dir = try_dir / "harness_before"
         harness_before_dir.mkdir(parents=True, exist_ok=True)
         before_extracted_file = harness_before_dir / "extracted_loop.rs"
-        # create the extracted file if it doesn't exist
-        if not before_extracted_file.exists():
-            extracted_ok = extract_loop_for_error(
-                current_proof_file, verus_error, before_extracted_file
-            )
-            assert (
-                extracted_ok
-            ), f"Failed to extract loop harness for {current_proof_file}"
+        prepare_extracted_harness(
+            current_proof_file,
+            verus_error,
+            before_extracted_file,
+            backend=cex_validation_backend,
+        )
     else:
         before_extracted_file = None
     # CEX generation
@@ -199,16 +203,18 @@ def generate_and_generalize(
         console_error_msg,
         model,
         num_cex,
+        cex_validation_backend,
     )
 
     # Optionally perform loop harness extraction and CEX validation
     if enable_validation and error_inside_loop(current_proof_file, verus_error):
         if counter_examples:
-            baseline_results = validate_cex_list_extracted(
+            baseline_results = validate_cex_list_with_backend(
                 extracted_file=before_extracted_file,
                 counter_examples=counter_examples,
                 validation_dir=harness_before_dir,
-            )  # results written to harness_before_dir/batch_results.json
+                backend=cex_validation_backend,
+            )
             # Record per-CE validation status and filter to true CEXs
             add_validate_status(
                 counter_examples=counter_examples,
@@ -249,6 +255,7 @@ def generate_and_generalize(
         original_proof_file,
         diff,
         model,
+        cex_validation_backend,
     )
 
     return fixed_proof_path, counter_examples
@@ -264,6 +271,7 @@ def cex_iterative_repair(
     cex_generation_strategy: Literal["z3", "simple", "verification"] = "simple",
     cex_generalization_strategy: Literal["z3", "simple", "mut_val"] = "simple",
     num_cex: int = 10,
+    cex_validation_backend: CexValidationBackend = "v2",
 ) -> Path:
     """Iteratively repair using IC3-guided counterexamples and generalization."""
     cex_repair_dir.mkdir(parents=True, exist_ok=True)
@@ -465,6 +473,7 @@ def cex_iterative_repair(
             cex_generalization_strategy=eff_genz_strategy,
             num_cex=num_cex,
             enable_validation=enable_validation_flag,
+            cex_validation_backend=cex_validation_backend,
         )
 
         # Record CEX stats for this iteration if applicable

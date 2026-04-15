@@ -34,6 +34,7 @@ def z3_cex_generalization(
     original_proof_file: Path,
     diff: str,
     model: str = "gpt-4o",
+    cex_validation_backend: str = "v2",
     z3_exec_timeout_seconds: int = 20,
 ) -> Optional[Path]:
     """
@@ -174,6 +175,7 @@ def z3_cex_generalization(
                 original_proof_file=original_proof_file,
                 diff=diff,
                 model=model,
+                cex_validation_backend=cex_validation_backend,
             )
 
         # Stage C: Ask LLM to inject/strengthen invariants with the obtained clause

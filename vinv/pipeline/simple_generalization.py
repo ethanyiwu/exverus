@@ -26,6 +26,7 @@ def simple_cex_generalization(
     original_proof_file: Path,
     diff: str,
     model: str = "gpt-4o",
+    cex_validation_backend: str = "v2",
 ) -> Optional[Path]:
     """
     Generalize from counter examples using a simple, direct approach.

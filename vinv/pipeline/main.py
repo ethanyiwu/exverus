@@ -26,6 +26,7 @@ from vinv.gen.cost_report import (
     merge_task_cost_reports,
 )
 from vinv.pipeline.cex import cex_iterative_repair
+from vinv.pipeline.cex_validation_backend import CexValidationBackend
 from vinv.pipeline.iterative import iterative_repair
 from vinv.proof import IntermediateProofFile, ProofFile
 from vinv.utils import check_status, get_last_attempt_file, json_load
@@ -189,6 +190,7 @@ def attempt_cex_repair(
     cex_generalization_strategy: str,
     original_proof_file: Path | None = None,
     num_cex: int = 10,
+    cex_validation_backend: CexValidationBackend = "v2",
 ) -> Tuple[Path | None, bool, bool]:
     """
     Attempt CEX-based repair on a proof.
@@ -208,8 +210,14 @@ def attempt_cex_repair(
     )
     cex_repair_dir.mkdir(parents=True, exist_ok=True)
     cex_repair_status_file = cex_repair_dir / "cex_repair_status.txt"
+    backend_marker_file = cex_repair_dir / "cex_validation_backend.txt"
 
-    if cex_repair_status_file.exists():
+    if (
+        cex_repair_status_file.exists()
+        and backend_marker_file.exists()
+        and backend_marker_file.read_text(encoding="utf-8").strip()
+        == cex_validation_backend
+    ):
         logger.info(
             f"Skipping CEX repair for {error_proof.path} as it has already been tried to repair."
         )
@@ -220,6 +228,7 @@ def attempt_cex_repair(
         )
 
     try:
+        backend_marker_file.write_text(cex_validation_backend, encoding="utf-8")
         # Attempt counter example guided repair
         fixed_proof_path = cex_iterative_repair(
             error_proof_file=error_proof.path,
@@ -231,6 +240,7 @@ def attempt_cex_repair(
             cex_generation_strategy=cex_generation_strategy,
             cex_generalization_strategy=cex_generalization_strategy,
             num_cex=num_cex,
+            cex_validation_backend=cex_validation_backend,
         )
 
         # Check if repair was successful and record status
@@ -469,6 +479,9 @@ def _process_proof_task(task: Dict[str, Any]) -> Dict[str, Any]:
     cex_generation_strategy: str = task["cex_generation_strategy"]
     cex_generalization_strategy: str = task["cex_generalization_strategy"]
     num_cex: int = task["num_cex"]
+    cex_validation_backend: CexValidationBackend = task.get(
+        "cex_validation_backend", "v2"
+    )
     ablation: bool = task.get("ablation", False)
     max_repair_attempts: int = task.get("max_repair_attempts", 5)
     unverified_path = Path(task["unverified_path"])
@@ -493,6 +506,7 @@ def _process_proof_task(task: Dict[str, Any]) -> Dict[str, Any]:
             "cex_generation_strategy": cex_generation_strategy,
             "cex_generalization_strategy": cex_generalization_strategy,
             "num_cex": num_cex,
+            "cex_validation_backend": cex_validation_backend,
             "status_suffix": status_suffix,
         },
     )
@@ -559,6 +573,7 @@ def _process_proof_task(task: Dict[str, Any]) -> Dict[str, Any]:
                         cex_generalization_strategy,
                         original_proof_file=unverified_proof.path,
                         num_cex=num_cex,
+                        cex_validation_backend=cex_validation_backend,
                     )
                     last_phase = "cex_repair"
 
@@ -631,6 +646,7 @@ def main(
     max_repair_attempts: int = 10,
     cex_generation_strategy: Literal["z3", "simple", "verification"] = "simple",
     cex_generalization_strategy: Literal["simple", "mut_val"] = "simple",
+    cex_validation_backend: CexValidationBackend = "v2",
     run_all: bool = False,
     num_cex: int = 10,
     debug: bool = False,
@@ -653,7 +669,7 @@ def main(
     if run_all:
         all_unverified_proofs = get_all_vb_proofs(
             verified_proof=False,
-            use_specified_taskids=False,
+            use_specified_taskids=True,
             with_invariant=False,
             remove_blacklisted=True,
             source=source,
@@ -685,6 +701,7 @@ def main(
                 "max_repair_attempts": max_repair_attempts,
                 "cex_generation_strategy": cex_generation_strategy,
                 "cex_generalization_strategy": cex_generalization_strategy,
+                "cex_validation_backend": cex_validation_backend,
                 "num_cex": num_cex,
                 "ablation": ablation,
                 "source": source,
@@ -751,6 +768,7 @@ def main(
             "max_repair_attempts": max_repair_attempts,
             "cex_generation_strategy": cex_generation_strategy,
             "cex_generalization_strategy": cex_generalization_strategy,
+            "cex_validation_backend": cex_validation_backend,
             "run_all": run_all,
             "num_cex": num_cex,
             "debug": debug,

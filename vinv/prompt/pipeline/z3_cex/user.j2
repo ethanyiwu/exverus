@@ -11,10 +11,12 @@ Requirements:
 - The script must assign a JSON-serializable list of dicts to a global variable named `__z3_cex_results__` (each dict maps variable names to concrete values).
 - Vectors (naming convention for reconstruction): To avoid name collisions, when you model a Rust Vec like `arr1: Vec<i32>` using element-wise scalars, name them with a namespace as `__vec__arr1__0`, `__vec__arr1__1`, ... (contiguously from 0). Optionally include a concrete scalar `__vec__arr1__len` giving the intended number of elements. You do not need to emit the aggregated `"arr1"` entry; the system will reconstruct `"arr1": "vec![...]"` from your namespaced entries (and `__len` if provided). If you do emit the aggregated entry, it MUST be a STRING like `"vec![1, 2]"`.
 - Keep the script minimal and concrete. Use small integer values where possible.
-- You MUST encode the values of ALL variables (including arrays or vectors) in the proof/loop/invariant into the final
-  results, even if they are not used in the model solving.
+- You MUST encode the values of all variables that appear in the target extracted harness state, even if they are not used in the model solving.
 - You MUST not assume anything that is not explicitly stated in the loop invariants/assertions/preconditions. If a variable is not explicitly stated in the loop invariants/assertions/preconditions, you MUST NOT assume anything about it even if there are implicit/explicit assignments to it.
 - You MUST avoid using Nones in the results.
+- Every result key MUST be an exact source-level identifier from the proof or extracted harness. Never emit placeholder names, helper names, numeric keys like `"3"`, SSA names, or invented aliases.
+- For pre-state values, prefer the exact base identifier names that appear before the loop body. Use `_pre` only if you truly cannot avoid it.
+- Post-state values are optional hints only. If you provide them, use the canonical form `<name>_after` or vector keys whose base name ends with `_after`. Do not use `_post`, and do not mix `_pre`/`_post` spellings for the same variable.
 
 Practical guidance to avoid UNSAT and runtime errors:
 - If a variable like `N`, `len`, or an index is used to size arrays or in Python `range(...)`, do NOT use symbolic Z3 Ints as Python loop bounds; instead, assign a small concrete Int (e.g., `N = z3.IntVal(2)`) and use that concrete value for any Python-side constructs.
@@ -70,6 +72,13 @@ Here is the extracted function with transformed invariants:
 ```rust
 {{ extracted_loop_function }}
 ```
+
+{% if extracted_harness_targets %}
+The validator can only inject assignments for these exact pre-state identifiers:
+`{{ extracted_harness_targets | join("`, `") }}`
+
+Use those exact names for the pre-state. If you also want to communicate post-state facts, add optional `<name>_after` keys, but do not replace the pre-state names with `_post` aliases.
+{% endif %}
 {% endif %}
 
 ## Targeted Verification Error:

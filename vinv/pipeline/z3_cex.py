@@ -16,6 +16,11 @@ from veval import VerusError
 
 from vinv.gen.client import request_conversation_one
 from vinv.gen.prompt_utils import render_prompt
+from vinv.pipeline.cex_harness_v2 import load_extracted_harness_v2
+from vinv.pipeline.cex_validation_backend import (
+    CexValidationBackend,
+    canonicalize_generated_cex_results,
+)
 from vinv.pipeline.counter_example import CounterExample
 from vinv.pipeline.z3_utils import run_z3_script_with_timeout
 from vinv.utils import extract_python_code_block
@@ -133,11 +138,40 @@ def check_z3_results(
     results: List[dict],
     proof_content: str,
     extracted_loop_function: Optional[str] = None,
+    extracted_loop_file: Optional[Path] = None,
+    cex_validation_backend: CexValidationBackend = "v2",
 ) -> Tuple[bool, str, Set[str]]:
     """Minimal check: ensure each assigned variable exists in the proof/loop context.
 
     Returns (is_valid, reason_message, allowed_names).
     """
+    if (
+        cex_validation_backend == "v2"
+        and extracted_loop_file is not None
+        and extracted_loop_file.exists()
+    ):
+        harness = load_extracted_harness_v2(extracted_loop_file)
+        allowed_names = set(harness.injection_target_names)
+        cleaned, diagnostics = canonicalize_generated_cex_results(
+            results,
+            extracted_loop_file,
+            backend=cex_validation_backend,
+        )
+        if cleaned:
+            return True, "ok", allowed_names
+        reason = "No generated result mapped to injectable harness targets."
+        dropped = [
+            item
+            for item in diagnostics
+            if not item.get("kept")
+            and item.get("reason") == "no_injectable_assignments"
+        ]
+        if dropped:
+            reason += " Examples: " + ", ".join(
+                str(item.get("index")) for item in dropped[:5]
+            )
+        return False, reason, allowed_names
+
     # Build an allowlist of identifiers from the loop (preferred) and entire proof
     allowed_names: Set[str] = set()
     allowed_names |= _extract_identifiers_from_rust(proof_content or "")
@@ -241,6 +275,7 @@ def z3_cex_generation(
     console_error_msg: str,
     model: str = "gpt-4o",
     num_cex: int = 10,
+    cex_validation_backend: CexValidationBackend = "v2",
     z3_exec_timeout_seconds: int = 20,
 ) -> Optional[List[CounterExample]]:
     """Generate a counter example by asking the LLM to emit a Python Z3 script.
@@ -254,6 +289,15 @@ def z3_cex_generation(
         extracted_loop_function = (
             extracted_loop_file.read_text() if extracted_loop_file else None
         )
+        extracted_harness_targets = None
+        if (
+            cex_validation_backend == "v2"
+            and extracted_loop_file is not None
+            and extracted_loop_file.exists()
+        ):
+            extracted_harness_targets = sorted(
+                load_extracted_harness_v2(extracted_loop_file).injection_target_names
+            )
         # We'll allow multiple generation attempts so that the LLM can fix
         # issues in generated Z3 scripts (syntax/execution problems or missing
         # counterexample). Each attempt includes feedback about the previous
@@ -265,6 +309,7 @@ def z3_cex_generation(
             console_error_msg=console_error_msg,
             num_cex=num_cex,
             extracted_loop_function=extracted_loop_function,
+            extracted_harness_targets=extracted_harness_targets,
         )
         (try_dir / "z3_prompt.txt").write_text(z3_prompt)
 
@@ -406,7 +451,26 @@ def z3_cex_generation(
                 logger.warning("__z3_cex_results__ is not a list; coercing to list")
                 normalized_results = [results]
 
-            normalized_results = [coalesce_vecs(d) for d in normalized_results]
+            if (
+                cex_validation_backend == "v2"
+                and extracted_loop_file is not None
+                and extracted_loop_file.exists()
+            ):
+                normalized_results, normalization_diagnostics = (
+                    canonicalize_generated_cex_results(
+                        normalized_results,
+                        extracted_loop_file,
+                        backend=cex_validation_backend,
+                    )
+                )
+                (
+                    try_dir / f"z3_results_normalized_attempt_{gen_attempt}.json"
+                ).write_text(json.dumps(normalized_results, indent=2))
+                (
+                    try_dir / f"z3_results_diagnostics_attempt_{gen_attempt}.json"
+                ).write_text(json.dumps(normalization_diagnostics, indent=2))
+            else:
+                normalized_results = [coalesce_vecs(d) for d in normalized_results]
 
             # if too few results, ask the model to generate more
             if len(normalized_results) < num_cex / 2:
@@ -489,6 +553,7 @@ def create_z3_prompt(
     console_error_msg: str,
     num_cex: int,
     extracted_loop_function: Optional[str] = None,
+    extracted_harness_targets: Optional[List[str]] = None,
 ) -> str:
     """Create a prompt asking the LLM to emit a Python z3 script.
 
@@ -501,6 +566,7 @@ def create_z3_prompt(
         "pipeline/z3_cex/user.j2",
         proof_content=proof_content,
         extracted_loop_function=extracted_loop_function,
+        extracted_harness_targets=extracted_harness_targets,
         error_type=verus_error.error.name,
         focused_error_text=verus_error.get_text(),
         full_error_text=console_error_msg,

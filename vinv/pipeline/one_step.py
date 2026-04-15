@@ -12,6 +12,7 @@ from vinv.config import PIPELINE_DEBUG_RESULTS_DIR, PIPELINE_RESULTS_DIR
 from vinv.data.cherrypick import get_almost_correct_av_proofs
 from vinv.data.select_injected import get_selected_injected_proofs
 from vinv.pipeline.main import attempt_cex_repair
+from vinv.pipeline.cex_validation_backend import CexValidationBackend
 from vinv.utils import json_load
 from vinv.verus_utils import (
     get_console_error_msg_from_rustc_out,
@@ -31,6 +32,9 @@ def _process_proof_task(task: Dict[str, Any]) -> Dict[str, Any]:
     cex_generation_strategy: str = task["cex_generation_strategy"]
     cex_generalization_strategy: str = task["cex_generalization_strategy"]
     num_cex: int = task["num_cex"]
+    cex_validation_backend: CexValidationBackend = task.get(
+        "cex_validation_backend", "v2"
+    )
     ablation: bool = task["ablation"]
     source_path = Path(task["source_path"])  # original proof file
 
@@ -76,6 +80,7 @@ def _process_proof_task(task: Dict[str, Any]) -> Dict[str, Any]:
                 cex_generalization_strategy,
                 original_proof_file=source_path,
                 num_cex=num_cex,
+                cex_validation_backend=cex_validation_backend,
             )
             last_phase = "cex_repair"
 
@@ -128,6 +133,7 @@ def main(
     max_repair_attempts: int = 10,
     cex_generation_strategy: Literal["z3", "simple", "verification"] = "simple",
     cex_generalization_strategy: Literal["simple", "mut_val"] = "simple",
+    cex_validation_backend: CexValidationBackend = "v2",
     num_cex: int = 10,
     num_workers: int = 1,
     debug: bool = False,
@@ -173,6 +179,7 @@ def main(
                 "max_repair_attempts": max_repair_attempts,
                 "cex_generation_strategy": cex_generation_strategy,
                 "cex_generalization_strategy": cex_generalization_strategy,
+                "cex_validation_backend": cex_validation_backend,
                 "num_cex": num_cex,
                 "ablation": ablation,
             }
