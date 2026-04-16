@@ -1,6 +1,8 @@
+import importlib.util
 import json
 import os
 import shutil
+from pathlib import Path
 
 from typer.testing import CliRunner
 
@@ -9,7 +11,15 @@ from vinv.autoverus import (
     is_correct_autoverus_output,
     parse_phase1_examples,
 )
-from vinv.cli import app
+
+spec = importlib.util.spec_from_file_location(
+    "autoverus_script",
+    Path(__file__).resolve().parents[2] / "autoverus.py",
+)
+module = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(module)
+app = module.app
 
 runner = CliRunner()
 
@@ -57,9 +67,13 @@ def test_build_autoverus_runtime_config_rewrites_local_paths(tmp_path):
 
 
 def test_autoverus_cli_run_with_fake_tool(tmp_path):
-    input_dir = tmp_path / "input"
-    input_dir.mkdir()
-    (input_dir / "sample.rs").write_text("fn main() {}\n", encoding="utf-8")
+    suite_root = tmp_path / "suite"
+    bench_a = suite_root / "bench_a"
+    bench_b = suite_root / "bench_b"
+    bench_a.mkdir(parents=True)
+    bench_b.mkdir(parents=True)
+    (bench_a / "sample_a.rs").write_text("fn main() {}\n", encoding="utf-8")
+    (bench_b / "sample_b.rs").write_text("fn main() {}\n", encoding="utf-8")
 
     tool_dir = tmp_path / "tool"
     (tool_dir / "code" / "examples").mkdir(parents=True)
@@ -123,10 +137,10 @@ def test_autoverus_cli_run_with_fake_tool(tmp_path):
     result = runner.invoke(
         app,
         [
-            "autoverus",
-            "run",
-            "--input-dir",
-            str(input_dir),
+            "--source",
+            "cleaned_vb",
+            "--suite-root",
+            str(suite_root),
             "--tool-dir",
             str(tool_dir),
             "--config-file",
@@ -143,12 +157,16 @@ def test_autoverus_cli_run_with_fake_tool(tmp_path):
 
     assert result.exit_code == 0
     run_dir = next(output_root.iterdir())
-    assert (run_dir / "1-sample.rs").read_text(encoding="utf-8") == "Score: (1, 0)\n"
-    log_payload = json.loads((run_dir / "1-sample.log").read_text(encoding="utf-8"))
+    assert (run_dir / "bench_a" / "1-sample_a.rs").read_text(encoding="utf-8") == "Score: (1, 0)\n"
+    assert (run_dir / "bench_b" / "1-sample_b.rs").read_text(encoding="utf-8") == "Score: (1, 0)\n"
+    log_payload = json.loads(
+        (run_dir / "bench_a" / "1-sample_a.log").read_text(encoding="utf-8")
+    )
     assert log_payload["example_path"] == str(tool_dir / "code" / "examples")
     assert log_payload["lemma_path"] == str(tool_dir / "code" / "lemmas")
     assert log_payload["util_path"] == str(tool_dir / "utils")
     assert log_payload["verus_path"] == "/tmp/fake-verus"
     assert log_payload["phase1_examples"] == ["8", "9"]
-    assert "Scheduled: 1" in result.stdout
-    assert "Verified: 1 (existing 0, new 1)" in result.stdout
+    assert "Benchmarks: 2" in result.stdout
+    assert "Scheduled: 2" in result.stdout
+    assert "Verified: 2 (existing 0, new 2)" in result.stdout

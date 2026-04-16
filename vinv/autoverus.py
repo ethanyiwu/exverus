@@ -6,8 +6,7 @@ import re
 import shutil
 import subprocess
 import sys
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -36,17 +35,14 @@ AUTOVERUS_BENCHMARK_SOURCES = {
 
 
 @dataclass(frozen=True)
-class AutoVerusRunConfig:
-    name: str
-    source: str
-    benchmark: str
-    input_dir: Path
+class AutoVerusConfig:
+    input_dirs: dict[str, Path]
     output_dir: Path
     tool_dir: Path
     config_file: Path
-    temp: float
-    phase1_examples: tuple[str, ...]
-    repair_num: int
+    temp: float = 1.0
+    phase1_examples: tuple[str, ...] = ("3", "6", "7")
+    repair_num: int = 10
     disable_safe: bool = False
     repair_uniform: bool = False
     phase_uniform: bool = False
@@ -58,49 +54,6 @@ class AutoVerusRunConfig:
     rerun: bool = False
 
 
-@dataclass(frozen=True)
-class AutoVerusTask:
-    file_name: str
-    input_file: Path
-    output_file: Path
-    log_file: Path
-    scratch_dir: Path
-    command: list[str]
-
-
-@dataclass(frozen=True)
-class AutoVerusTaskResult:
-    file_name: str
-    returncode: int
-    verified: bool
-    elapsed_seconds: float
-
-
-@dataclass(frozen=True)
-class AutoVerusRunSummary:
-    output_dir: Path
-    total_files: int
-    scheduled: int
-    existing_verified: int
-    existing_unverified: int
-    new_verified: int
-    new_unverified: int
-    failed_runs: int
-
-    @property
-    def verified_total(self) -> int:
-        return self.existing_verified + self.new_verified
-
-
-def available_autoverus_benchmarks(source: str) -> tuple[str, ...]:
-    benchmarks = AUTOVERUS_BENCHMARK_SOURCES.get(source)
-    if benchmarks is None:
-        raise ValueError(
-            f"Unknown AutoVerus source {source!r}. Choose from {sorted(AUTOVERUS_BENCHMARK_SOURCES)}."
-        )
-    return tuple(sorted(benchmarks))
-
-
 def parse_phase1_examples(raw: str) -> tuple[str, ...]:
     phase1_examples = tuple(part for part in re.split(r"[\s,]+", raw.strip()) if part)
     if not phase1_examples:
@@ -108,25 +61,24 @@ def parse_phase1_examples(raw: str) -> tuple[str, ...]:
     return phase1_examples
 
 
-def resolve_autoverus_input_dir(
+def resolve_autoverus_input_dirs(
     source: str,
-    benchmark: str,
-    input_dir: Path | None = None,
-) -> Path:
-    if input_dir is not None:
-        return input_dir
-    benchmarks = AUTOVERUS_BENCHMARK_SOURCES.get(source)
-    if benchmarks is None:
-        raise ValueError(
-            f"Unknown AutoVerus source {source!r}. Choose from {sorted(AUTOVERUS_BENCHMARK_SOURCES)}."
-        )
+    suite_root: Path | None = None,
+) -> dict[str, Path]:
+    if suite_root is not None:
+        input_dirs = {
+            path.name: path for path in sorted(suite_root.iterdir()) if path.is_dir()
+        }
+        if not input_dirs:
+            raise ValueError(f"No benchmark directories found in {suite_root}")
+        return input_dirs
     try:
-        return benchmarks[benchmark]
+        benchmarks = AUTOVERUS_BENCHMARK_SOURCES[source]
     except KeyError as exc:
         raise ValueError(
-            f"Unknown benchmark {benchmark!r} for source {source!r}. "
-            f"Choose from {sorted(benchmarks)}."
+            f"Unknown AutoVerus source {source!r}. Choose from {sorted(AUTOVERUS_BENCHMARK_SOURCES)}."
         ) from exc
+    return {benchmark: benchmarks[benchmark] for benchmark in sorted(benchmarks)}
 
 
 def resolve_autoverus_config_file(
@@ -142,15 +94,14 @@ def build_autoverus_output_dir(
     temp: float,
     stamp: str | None = None,
 ) -> Path:
-    date_prefix = stamp or datetime.now().strftime("%Y%m%d")
-    return output_root / f"{date_prefix}-{name}-{temp}"
+    return output_root / f"{stamp or datetime.now().strftime('%Y%m%d')}-{name}-{temp}"
 
 
-def is_correct_autoverus_output(code_file_path: Path) -> bool:
-    text = code_file_path.read_text(encoding="utf-8")
+def is_correct_autoverus_output(output_file: Path) -> bool:
+    text = output_file.read_text(encoding="utf-8")
     if "safe: false" in text.lower():
         return False
-    if "havoc_inline_post" not in code_file_path.name and any(
+    if "havoc_inline_post" not in output_file.name and any(
         word in text for word in SPECIAL_WORDS
     ):
         return False
@@ -181,32 +132,12 @@ def build_autoverus_runtime_config(
     return payload
 
 
-def _write_runtime_config(
-    runtime_dir: Path,
-    tool_dir: Path,
-    config_file: Path,
-) -> Path:
-    runtime_dir.mkdir(parents=True, exist_ok=True)
-    runtime_config = runtime_dir / "autoverus.runtime.json"
-    runtime_config.write_text(
-        json.dumps(
-            build_autoverus_runtime_config(tool_dir=tool_dir, config_file=config_file),
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    return runtime_config
-
-
-def _build_task(
-    config: AutoVerusRunConfig,
+def _build_command(
+    config: AutoVerusConfig,
     runtime_config: Path,
     input_file: Path,
-) -> AutoVerusTask:
-    output_file = config.output_dir / f"1-{input_file.name}"
-    log_file = output_file.with_suffix(".log")
-    scratch_dir = config.output_dir / "_work" / f"1-{input_file.stem}"
+    output_file: Path,
+) -> list[str]:
     command = [
         sys.executable,
         str(config.tool_dir / "code" / "main.py"),
@@ -239,118 +170,142 @@ def _build_task(
         command.append("--direct-repair")
     if config.is_baseline:
         command.append("--is-baseline")
-    return AutoVerusTask(
-        file_name=input_file.name,
-        input_file=input_file,
-        output_file=output_file,
-        log_file=log_file,
-        scratch_dir=scratch_dir,
-        command=command,
-    )
+    return command
 
 
-def _run_task(task: AutoVerusTask) -> AutoVerusTaskResult:
-    task.scratch_dir.mkdir(parents=True, exist_ok=True)
-    started = time.perf_counter()
+def _run_job(job: tuple[list[str], Path, Path, Path]) -> tuple[int, bool]:
+    command, scratch_dir, log_file, output_file = job
+    scratch_dir.mkdir(parents=True, exist_ok=True)
     completed = subprocess.run(
-        task.command,
-        cwd=task.scratch_dir,
+        command,
+        cwd=scratch_dir,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
         encoding="utf-8",
         check=False,
     )
-    task.log_file.write_text(completed.stdout or "", encoding="utf-8")
-    return AutoVerusTaskResult(
-        file_name=task.file_name,
-        returncode=completed.returncode,
-        verified=task.output_file.is_file() and is_correct_autoverus_output(task.output_file),
-        elapsed_seconds=time.perf_counter() - started,
+    log_file.write_text(completed.stdout or "", encoding="utf-8")
+    return completed.returncode, output_file.is_file() and is_correct_autoverus_output(
+        output_file
     )
 
 
-def _run_tasks(
-    tasks: list[AutoVerusTask],
+def _run_jobs(
+    jobs: list[tuple[list[str], Path, Path, Path]],
     num_workers: int,
-) -> list[AutoVerusTaskResult]:
+) -> list[tuple[int, bool]]:
     if num_workers <= 1:
-        return [_run_task(task) for task in tasks]
+        return [_run_job(job) for job in jobs]
     with ThreadPoolExecutor(max_workers=num_workers) as executor:
-        futures = [executor.submit(_run_task, task) for task in tasks]
-        return [future.result() for future in as_completed(futures)]
+        return list(executor.map(_run_job, jobs))
 
 
-def render_autoverus_summary(summary: AutoVerusRunSummary) -> str:
-    lines = [
-        f"Run directory: {summary.output_dir}",
-        f"Files scanned: {summary.total_files}",
-        f"Scheduled: {summary.scheduled}",
-        f"Verified: {summary.verified_total} "
-        f"(existing {summary.existing_verified}, new {summary.new_verified})",
-        f"Existing unverified skipped: {summary.existing_unverified}",
-        f"New unverified: {summary.new_unverified}",
-        f"Failed subprocesses: {summary.failed_runs}",
-    ]
-    return "\n".join(lines)
+def _run_benchmark(
+    config: AutoVerusConfig,
+    runtime_config: Path,
+    benchmark: str,
+    input_dir: Path,
+) -> dict[str, int]:
+    benchmark_dir = config.output_dir / benchmark
+    benchmark_dir.mkdir(parents=True, exist_ok=True)
+    summary = {
+        "total_files": 0,
+        "scheduled": 0,
+        "existing_verified": 0,
+        "existing_unverified": 0,
+        "new_verified": 0,
+        "new_unverified": 0,
+        "failed_runs": 0,
+    }
+    jobs: list[tuple[list[str], Path, Path, Path]] = []
+    for input_file in sorted(path for path in input_dir.iterdir() if path.is_file()):
+        summary["total_files"] += 1
+        output_file = benchmark_dir / f"1-{input_file.name}"
+        log_file = output_file.with_suffix(".log")
+        if output_file.exists() and not config.rerun:
+            if is_correct_autoverus_output(output_file):
+                summary["existing_verified"] += 1
+            else:
+                summary["existing_unverified"] += 1
+            continue
+        if config.rerun:
+            output_file.unlink(missing_ok=True)
+            log_file.unlink(missing_ok=True)
+        jobs.append(
+            (
+                _build_command(config, runtime_config, input_file, output_file),
+                benchmark_dir / "_work" / f"1-{input_file.stem}",
+                log_file,
+                output_file,
+            )
+        )
+    summary["scheduled"] = len(jobs)
+    for returncode, verified in _run_jobs(jobs, config.num_workers):
+        summary["failed_runs"] += int(returncode != 0)
+        key = "new_verified" if verified else "new_unverified"
+        summary[key] += 1
+    return summary
 
 
-def run_autoverus(config: AutoVerusRunConfig) -> AutoVerusRunSummary:
+def run_autoverus(config: AutoVerusConfig) -> dict[str, object]:
     if not (config.tool_dir / "code" / "main.py").is_file():
         raise FileNotFoundError(
             f"AutoVerus entrypoint not found: {config.tool_dir / 'code' / 'main.py'}"
         )
     config.output_dir.mkdir(parents=True, exist_ok=True)
-    input_files = sorted(path for path in config.input_dir.iterdir() if path.is_file())
-    existing_verified = 0
-    existing_unverified = 0
-    tasks: list[AutoVerusTask] = []
-    with TemporaryDirectory(prefix="autoverus-config-") as runtime_dir_name:
-        runtime_config = _write_runtime_config(
-            runtime_dir=Path(runtime_dir_name),
-            tool_dir=config.tool_dir,
-            config_file=config.config_file,
+    with TemporaryDirectory(prefix="autoverus-config-") as runtime_dir:
+        runtime_config = Path(runtime_dir) / "autoverus.runtime.json"
+        runtime_config.write_text(
+            json.dumps(
+                build_autoverus_runtime_config(
+                    tool_dir=config.tool_dir,
+                    config_file=config.config_file,
+                ),
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
         )
-        for input_file in input_files:
-            task = _build_task(config=config, runtime_config=runtime_config, input_file=input_file)
-            if task.output_file.exists() and not config.rerun:
-                if is_correct_autoverus_output(task.output_file):
-                    existing_verified += 1
-                else:
-                    existing_unverified += 1
-                continue
-            if config.rerun:
-                task.output_file.unlink(missing_ok=True)
-                task.log_file.unlink(missing_ok=True)
-            tasks.append(task)
-        results = _run_tasks(tasks=tasks, num_workers=config.num_workers)
-    new_verified = sum(result.verified for result in results)
-    failed_runs = sum(result.returncode != 0 for result in results)
-    return AutoVerusRunSummary(
-        output_dir=config.output_dir,
-        total_files=len(input_files),
-        scheduled=len(tasks),
-        existing_verified=existing_verified,
-        existing_unverified=existing_unverified,
-        new_verified=new_verified,
-        new_unverified=len(results) - new_verified,
-        failed_runs=failed_runs,
-    )
+        benchmarks = {
+            benchmark: _run_benchmark(config, runtime_config, benchmark, input_dir)
+            for benchmark, input_dir in sorted(config.input_dirs.items())
+        }
+    return {"output_dir": config.output_dir, "benchmarks": benchmarks}
+
+
+def render_autoverus_summary(summary: dict[str, object]) -> str:
+    benchmarks = summary["benchmarks"]
+    total = lambda key: sum(info[key] for info in benchmarks.values())
+    lines = [
+        f"Run directory: {summary['output_dir']}",
+        f"Benchmarks: {len(benchmarks)}",
+        f"Files scanned: {total('total_files')}",
+        f"Scheduled: {total('scheduled')}",
+        f"Verified: {total('existing_verified') + total('new_verified')} "
+        f"(existing {total('existing_verified')}, new {total('new_verified')})",
+        f"Existing unverified skipped: {total('existing_unverified')}",
+        f"New unverified: {total('new_unverified')}",
+        f"Failed subprocesses: {total('failed_runs')}",
+    ]
+    for benchmark, info in sorted(benchmarks.items()):
+        lines.append(
+            f"- {benchmark}: {info['existing_verified'] + info['new_verified']}/{info['total_files']} verified"
+        )
+    return "\n".join(lines)
 
 
 __all__ = [
     "AUTOVERUS_BENCHMARK_SOURCES",
     "AUTOVERUS_RUNS_DIR",
     "AUTOVERUS_TOOL_DIR",
-    "AutoVerusRunConfig",
-    "AutoVerusRunSummary",
-    "available_autoverus_benchmarks",
+    "AutoVerusConfig",
     "build_autoverus_output_dir",
     "build_autoverus_runtime_config",
     "is_correct_autoverus_output",
     "parse_phase1_examples",
     "render_autoverus_summary",
     "resolve_autoverus_config_file",
-    "resolve_autoverus_input_dir",
+    "resolve_autoverus_input_dirs",
     "run_autoverus",
 ]
