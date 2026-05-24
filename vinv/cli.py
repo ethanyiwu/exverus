@@ -336,6 +336,48 @@ def cex_validation_stats(
     _write_output(payload, output)
 
 
+@analysis_app.command("autoverus-lynette-recalc")
+def autoverus_lynette_recalc(
+    run_dir: Path = typer.Argument(
+        ..., exists=True, file_okay=False, help="AutoVerus run directory."
+    ),
+    lynette_bin: Path | None = typer.Option(
+        None,
+        "--lynette-bin",
+        exists=True,
+        dir_okay=False,
+        help="Working Lynette binary.",
+    ),
+    format: OutputFormat = typer.Option(OutputFormat.text, help="Output format."),
+    include_repairs: bool = typer.Option(
+        True, "--repairs/--no-repairs", help="Include verified repair candidates."
+    ),
+    examples: int = typer.Option(
+        12, min=0, help="Number of safe repair examples in text output."
+    ),
+    output: Path | None = typer.Option(
+        None, "--output", help="Write JSON report to a file."
+    ),
+) -> None:
+    from vinv.analysis.autoverus_lynette_recalc import (
+        collect_recalculated_stats,
+        render_text,
+    )
+
+    report = collect_recalculated_stats(run_dir, lynette_bin, include_repairs)
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    _write_output(
+        (
+            json.dumps(report, indent=2)
+            if format == OutputFormat.json
+            else render_text(report, examples)
+        ),
+        None,
+    )
+
+
 @analysis_app.command("one-step-cex")
 def one_step_cex(
     try_dir: Path = typer.Argument(..., exists=True, file_okay=False, help="Single try_* directory."),
