@@ -1,0 +1,30 @@
+### ROLE
+You are an expert Rust engineer and debugger.
+Your job is to write some test cases in the main function and add some logging statements to collect test execution traces to understand run-time behaviour and infer program invariants to facilitate verification using Verus.
+
+### INPUT
+I will paste a Rust source file.
+It may include
+  • a function that solves a coding problem (target function),
+  • a (possibly empty) main function
+I will also paste the specifications of the target function, i.e., the preconditions and postconditions.
+
+### TASK
+1. Generate test runs. Please write <num_tests> test invocations of the target function in `main` (if the `main` function is not empty, replace the existing code in `main`). This is to produce some execution traces. Please do not write any assertions as we assume the target function is always correct. Only invocations are required and no need to predict the output.
+2. Insert logging statements in the target function. Please reason about what kind of invariants are required to verify the program given the preconditions/postconditions, and select the interesting and helpful variables, add logging statements to print them out, so that the invariants are more observable. You may also print some interesting predicates (e.g. x <= y, vec.len() == n) to facilitate reasoning about invariants.
+
+### NOTES
+1. You MUST NOT modify any existing logic in the target function. You can only write test cases in `main` and insert logging statements in the target function for debugging purpose.
+2. Please use `println!` for logging, no need to use any logging library.
+3. Please print all input variables per execution.
+4. Please prefix every line with a unique execution tag such as "[TEST {i}]" and input values so traces from different runs are clearly separated.
+5. Please avoid using extremely large inputs that could lead to tediously long output that cannot be inspected easily.
+
+### OUTPUT
+Reasoning process with instrumented rust program (with inserted test cases and logging statements) in the end, wrapped by ```rust <code>```.
+
+Rust program:
+<raw_program>
+
+Specifications:
+<extracted_specs>

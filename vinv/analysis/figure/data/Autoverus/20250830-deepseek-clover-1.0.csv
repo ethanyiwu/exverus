@@ -1,0 +1,12 @@
+dataset,filename,runtime_seconds,input_tokens_total,output_tokens_total,final_score_first,final_score_second,verified
+autoverus_ds_results/results_autoverus_ds_verusbench_250712/20250830-deepseek-clover-1.0,all_digits_strong,3225,520935,62687,0,1,False
+autoverus_ds_results/results_autoverus_ds_verusbench_250712/20250830-deepseek-clover-1.0,array_append_strong,1582,318916,25037,0,5,False
+autoverus_ds_results/results_autoverus_ds_verusbench_250712/20250830-deepseek-clover-1.0,array_concat_strong,3305,472392,57480,0,2,False
+autoverus_ds_results/results_autoverus_ds_verusbench_250712/20250830-deepseek-clover-1.0,array_copy_strong,294,68757,5384,1,0,True
+autoverus_ds_results/results_autoverus_ds_verusbench_250712/20250830-deepseek-clover-1.0,array_product_strong,3682,625181,62504,0,4,False
+autoverus_ds_results/results_autoverus_ds_verusbench_250712/20250830-deepseek-clover-1.0,array_sum_strong,2585,446040,43782,0,6,False
+autoverus_ds_results/results_autoverus_ds_verusbench_250712/20250830-deepseek-clover-1.0,binary_search,4199,755568,63090,0,2,False
+autoverus_ds_results/results_autoverus_ds_verusbench_250712/20250830-deepseek-clover-1.0,cal_div,489,112540,8447,1,0,True
+autoverus_ds_results/results_autoverus_ds_verusbench_250712/20250830-deepseek-clover-1.0,is_prime,385,59335,7004,2,0,True
+autoverus_ds_results/results_autoverus_ds_verusbench_250712/20250830-deepseek-clover-1.0,linear_search2,2095,439404,31391,0,3,False
+autoverus_ds_results/results_autoverus_ds_verusbench_250712/20250830-deepseek-clover-1.0,two_sum,4718,523064,90332,0,4,False

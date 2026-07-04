@@ -3,11 +3,11 @@ Aggregate statistics about CEX validation outcomes and their relation to
 per-step error reduction.
 
 Examples:
-    uv run vinv analysis cex-validation-stats \
+    python3 -m vinv.analysis.cex_validation_stats \
         results/pipeline/gpt-4o/CLEANED_VB \
         --strategy cex_repair_z3_mut_val_10
 
-    uv run vinv analysis cex-validation-stats \
+    python3 -m vinv.analysis.cex_validation_stats \
         results/pipeline/gpt-4o/CLEANED_VB/verusbench_diffy_brs1 \
         --strategy cex_repair_z3_mut_val_10 \
         --format json

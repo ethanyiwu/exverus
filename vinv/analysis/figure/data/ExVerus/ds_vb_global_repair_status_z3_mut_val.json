@@ -1,0 +1,732 @@
+{
+  "verusbench_cloverbench_all_digits_strong": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_cloverbench_all_digits_strong/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_cloverbench_array_append_strong": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_cloverbench_array_append_strong/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_cloverbench_array_concat_strong": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_cloverbench_array_concat_strong/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_cloverbench_array_copy_strong": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_cloverbench_array_copy_strong/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_cloverbench_array_product_strong": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_cloverbench_array_product_strong/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_cloverbench_array_sum_strong": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_cloverbench_array_sum_strong/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_cloverbench_binary_search": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_cloverbench_binary_search/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_cloverbench_cal_div": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_cloverbench_cal_div/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_cloverbench_is_prime": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_cloverbench_is_prime/cex_repair_z3_mut_val_10/gen_0/try_6/repaired.rs"
+  },
+  "verusbench_cloverbench_linear_search2": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_cloverbench_linear_search2/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_cloverbench_two_sum": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_cloverbench_two_sum/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_diffy_brs1": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_brs1/cex_repair_z3_mut_val_10/gen_0/try_5/repaired.rs"
+  },
+  "verusbench_diffy_brs2": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_brs2/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_brs3": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_brs3/cex_repair_z3_mut_val_10/gen_0/try_7/repaired.rs"
+  },
+  "verusbench_diffy_brs4": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_brs4/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_diffy_brs5": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_brs5/cex_repair_z3_mut_val_10/gen_0/try_4/repaired.rs"
+  },
+  "verusbench_diffy_conda": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_conda/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_condg": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_condg/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_condm": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_condm/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_condn": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_condn/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_ms1": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_ms1/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_ms2": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_ms2/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_ms3": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_ms3/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_ms4": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_ms4/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_ms5": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_ms5/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_res1": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_res1/cex_repair_z3_mut_val_10/gen_0/try_5/repaired.rs"
+  },
+  "verusbench_diffy_res1o": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_res1o/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_res2o": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_res2o/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_diffy_s12if": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s12if/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_s1if": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s1if/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_s1lif": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s1lif/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_s22if": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s22if/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_s2if": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s2if/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_s2lif": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s2lif/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_s32if": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s32if/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_s3if": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s3if/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_s3lif": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s3lif/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_s42if": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s42if/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_s4if": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s4if/cex_repair_z3_mut_val_10/gen_0/try_3/repaired.rs"
+  },
+  "verusbench_diffy_s4lif": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s4lif/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_s52if": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s52if/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_s5if": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s5if/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_s5lif": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_s5lif/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_sina1": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_sina1/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_sina2": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_sina2/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_diffy_sina3": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_sina3/cex_repair_z3_mut_val_10/gen_0/try_7/repaired.rs"
+  },
+  "verusbench_diffy_sina4": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_sina4/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_diffy_sina5": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_diffy_sina5/cex_repair_z3_mut_val_10/gen_0/try_4/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_105": {
+    "verification_status": "compilation_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_105/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_113": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_113/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_133": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_133/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_142": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_142/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_145": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_145/cex_repair_z3_mut_val_10/gen_0/try_6/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_161": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_161/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_170": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_170/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_18": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_18/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_2": {
+    "verification_status": "compilation_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_2/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_230": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_230/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_240": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_240/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_249": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_249/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_251": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_251/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_261": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_261/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_262": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_262/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_273": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_273/cex_repair_z3_mut_val_10/gen_0/try_8/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_282": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_282/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_284": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_284/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_290": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_290/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_3": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_3/cex_repair_z3_mut_val_10/gen_0/try_8/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_307": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_307/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_399": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_399/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_412": {
+    "verification_status": "compilation_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_412/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_414": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_414/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_424": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_424/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_426": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_426/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_431": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_431/cex_repair_z3_mut_val_10/gen_0/try_7/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_433": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_433/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_436": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_436/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_445": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_445/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_447": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_447/cex_repair_z3_mut_val_10/gen_0/try_5/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_454": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_454/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_457": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_457/cex_repair_z3_mut_val_10/gen_0/try_5/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_460": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_460/cex_repair_z3_mut_val_10/gen_0/try_3/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_461": {
+    "verification_status": "compilation_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_461/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_472": {
+    "verification_status": "compilation_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_472/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_474": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_474/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_476": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_476/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_477": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_477/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_554": {
+    "verification_status": "compilation_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_554/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_557": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_557/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_567": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_567/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_572": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_572/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_576": {
+    "verification_status": "compilation_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_576/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_578": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_578/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_579": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_579/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_586": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_586/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_588": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_588/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_602": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_602/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_605": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_605/cex_repair_z3_mut_val_10/gen_0/try_7/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_610": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_610/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_616": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_616/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_618": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_618/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_62": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_62/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_624": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_624/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_629": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_629/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_644": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_644/cex_repair_z3_mut_val_10/gen_0/try_5/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_69": {
+    "verification_status": "compilation_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_69/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_70": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_70/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_728": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_728/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_732": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_732/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_733": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_733/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_741": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_741/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_743": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_743/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_755": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_755/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_760": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_760/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_764": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_764/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_769": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_769/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_775": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_775/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_790": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_790/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_798": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_798/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_8": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_8/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_804": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_804/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_807": {
+    "verification_status": "compilation_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_807/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_808": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_808/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_809": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_809/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_94": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_94/cex_repair_z3_mut_val_10/gen_0/try_9/repaired.rs"
+  },
+  "verusbench_mbpp_task_id_95": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_mbpp_task_id_95/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_misc_arg_free": {
+    "verification_status": "verification_pass",
+    "last_phase": "init_gen",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_arg_free/init_gen/gen_0.rs"
+  },
+  "verusbench_misc_basic_nonlinear": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_basic_nonlinear/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_misc_binary_search": {
+    "verification_status": "verification_pass",
+    "last_phase": "init_gen",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_binary_search/init_gen/gen_0.rs"
+  },
+  "verusbench_misc_cell_2_sum": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_cell_2_sum/cex_repair_z3_mut_val_10/gen_0/try_3/repaired.rs"
+  },
+  "verusbench_misc_choose_odd": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_choose_odd/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_misc_conditional_average": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_conditional_average/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_misc_fib": {
+    "verification_status": "compilation_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_fib/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_misc_filter": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_filter/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_misc_filter_weak": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_filter_weak/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_misc_findmax": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_findmax/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  },
+  "verusbench_misc_havoc_inline_post": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_havoc_inline_post/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_misc_len_intersect": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_len_intersect/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_misc_linearsearch": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_linearsearch/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_misc_map": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_map/cex_repair_z3_mut_val_10/gen_0/try_3/repaired.rs"
+  },
+  "verusbench_misc_max_index": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_max_index/cex_repair_z3_mut_val_10/gen_0/try_1/repaired.rs"
+  },
+  "verusbench_misc_remove_all_greater": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_remove_all_greater/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_misc_simple_nested": {
+    "verification_status": "compilation_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_simple_nested/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_misc_sum": {
+    "verification_status": "verification_error",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_sum/cex_repair_z3_mut_val_10/gen_0/try_10/repaired.rs"
+  },
+  "verusbench_misc_tail_triangle": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_tail_triangle/cex_repair_z3_mut_val_10/gen_0/try_6/repaired.rs"
+  },
+  "verusbench_misc_trigger": {
+    "verification_status": "verification_pass",
+    "last_phase": "cex_repair",
+    "last_repaired_code_path": "/zp_vegeta/scratch_sb/juny/research/rust_playground/verus_inv/results/pipeline/deepseek-chat/verusbench_misc_trigger/cex_repair_z3_mut_val_10/gen_0/try_2/repaired.rs"
+  }
+}

@@ -6,6 +6,8 @@ import matplotlib
 # Use a non-interactive backend for headless environments
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
 import matplotlib_venn as venn
 
 from vinv.analysis.classify_task import (

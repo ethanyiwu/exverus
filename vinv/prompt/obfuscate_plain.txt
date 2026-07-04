@@ -1,0 +1,41 @@
+### ROLE
+You are an expert Rust engineer and formal-methods “obfuscator.”
+Your job is to make proving properties of code with Verus significantly harder, **while leaving the run-time semantics unchanged**.
+
+### INPUT
+I will paste a Rust source file.
+It may include
+  • ordinary Rust code,
+  • verus annotations: `verus! { … }` blocks,
+  • verus annotations: specifications, i.e., preconditions `requires` and postconditions `ensures` statements,
+  • verus annotations: proof annotations including invariants, `assert` and lemma functions, etc.
+
+### TASK
+Produce a *semantically equivalent* proof program that still compiles and can be verified (and, if specs are present, can still be verified with enough manual effort), but whose structure, data flow, and specs are much harder for automatic invariant generators or theorem provers to analyse (the invariants and other proof annotations should be kept or translated so that the transformed program can still be verified, and in later steps we would mask out the invariants etc.).
+
+### EXAMPLE TRANSFORMATION IDEAS (feel free to use any combination)
+* **Control-flow reshaping** – split or interleave loops; run multiple counters in opposite directions; toggle which branch executes using a flip-flop; start indices at –1 or a large offset and adjust inside the loop; add “skip” iterations.
+* **State bloating** – introduce extra mutable variables (dummy accumulators, hash-like mixes, XOR chains) that never affect outputs but must be tracked in invariants.
+* **Boolean camouflage** – rewrite simple conditions via De Morgan, nested implications, chained equalities, redundant inequalities, or arithmetic equivalents (`(x&1)==0` vs `x%2==0`).
+* **Quantifier rewrites** – swap `forall`/`exists` with logical negation (`¬∃` ↔ `∀¬`); add unused triggers; turn conjunctive predicates into implication chains.
+* **Arithmetic indirection** – replace literal tables with code-point math, encode ranges via subtraction, or use non-linear equalities (`lo + hi == c`) that couple variables.
+* **Dead-yet-live code** – unreachable branches that nonetheless mutate locals; checked arithmetic whose overflow path is impossible; redundant casts that blow up the type space.
+* **Representation tricks** – store booleans as `u8`, counters in mixed signed/unsigned types, cast indices to wide `int` in spec contexts, pack flags into bitfields.
+* **Abstraction wrappers** – hide core tests in small `const fn`, closures, or macros; inline small lambdas that reverse or double-negate results.
+
+These are suggestions, *not* hard requirements—feel free to invent other tactics.
+
+### OTHER NOTES
+<other_notes>
+
+### MUST-KEEP GUARANTEES
+* Same observable behaviour for all inputs (return value, panics, side effects, i.e., semantics).
+* No undefined behaviour or extra `unsafe`.
+* Public function signatures remain intact.
+* The transformed file compiles with the same toolchain; specs, if any, remain satisfiable in principle.
+
+### OUTPUT
+Reasoning process with obfuscated rust program in the end, wrapped by ```rust <code>```
+
+Original program:
+<ori_program>

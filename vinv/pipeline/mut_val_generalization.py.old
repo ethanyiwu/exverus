@@ -1,0 +1,440 @@
+"""
+LLM-based mutation-and-validation (mut_val) generalization strategy.
+
+This strategy simulates MIC+ctgDown at a high level by:
+- Using an LLM mutator to strengthen or weaken loop invariants in response to a counterexample.
+- Using a validator to select viable candidates (checker functions are placeholders for now).
+
+Critical rules:
+- Do NOT change executable code or function requires/ensures.
+- Only modify loop invariants, decreases clauses, and proof-only assertions.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Dict, List, Optional
+
+from loguru import logger
+from veval import VerusError, VerusErrorType
+
+from vinv.gen.client import request_conversation_multi_response
+from vinv.pipeline.counter_example import CounterExample
+from vinv.pipeline.ic3_frames import IC3FrameManager
+from vinv.utils import extract_rs_code_from_response
+
+
+def mut_val_cex_generalization(
+    proof_file: Path,
+    verus_error: VerusError,
+    counter_example: Optional[CounterExample],
+    try_dir: Path,
+    frame_manager: IC3FrameManager,
+    console_error_msg: str,
+    original_proof_file: Path,
+    diff: str,
+    model: str = "gpt-4o",
+    max_candidates: int = 1,
+) -> Optional[Path]:
+    """
+    Generate up to max_candidates mutated-invariant repairs via an LLM and validate them.
+
+    Returns the selected repaired proof path (and writes all candidates under try_dir/candidates/).
+    """
+    try:
+        try_dir.mkdir(parents=True, exist_ok=True)
+        candidates_dir = try_dir / "candidates"
+        candidates_dir.mkdir(parents=True, exist_ok=True)
+
+        proof_content = proof_file.read_text()
+        original_proof = original_proof_file.read_text()
+
+        direction = _classify_direction(verus_error, console_error_msg)
+
+        # Deterministically select a single mutator based on error type
+        mutator_name = _mutator_for_error(verus_error.error)
+        (try_dir / "mut_val_mutator_plan.json").write_text(
+            json.dumps(
+                {
+                    "error_type": verus_error.error.name,
+                    "mutator": mutator_name,
+                    "direction": direction,
+                },
+                indent=2,
+            )
+        )
+
+        # Precompute shared context
+        shared_ctx = _build_common_context(
+            proof_content=proof_content,
+            original_proof=original_proof,
+            diff=diff,
+            verus_error=verus_error,
+            console_error_msg=console_error_msg,
+            counter_example=counter_example,
+        )
+        (try_dir / "mut_val_common_context.json").write_text(
+            json.dumps(shared_ctx, indent=2)
+        )
+
+        validated: List[Dict[str, str]] = []
+
+        # Build one prompt and request multiple independent responses from the LLM
+        mutator = {
+            "strengthen": _strengthen_mutator,
+            "weaken": _weaken_mutator,
+            "misc": _misc_mutator,
+        }[mutator_name]
+
+        single_suffix = (
+            "\n\nReturn exactly ONE complete repaired Rust/Verus code block. "
+            "Do not include explanations or multiple alternatives."
+        )
+        prompt_text = mutator(shared_ctx) + single_suffix
+        (try_dir / "prompt.txt").write_text(prompt_text)
+
+        messages = _build_messages(prompt_text)
+
+        responses = request_conversation_multi_response(
+            messages,
+            model=model,
+            max_retry=5,
+            temperature=1,
+            num_responses=max_candidates,
+            task_id=str(try_dir),
+            prompt_type_id="mut_val_generalization",
+        )
+
+        if not responses:
+            logger.warning("mut_val: empty multi-response from LLM")
+        for idx, resp in enumerate(responses, start=1):
+            cand_dir = candidates_dir / f"candidate_{idx}"
+            cand_dir.mkdir(parents=True, exist_ok=True)
+            (cand_dir / "prompt.txt").write_text(prompt_text)
+            (cand_dir / "response.txt").write_text(resp)
+
+            code = extract_rs_code_from_response(resp)
+            if not code:
+                logger.warning(
+                    f"Candidate {idx}: could not extract Rust code from response"
+                )
+                continue
+            repaired_path = cand_dir / "repaired.rs"
+            repaired_path.write_text(code)
+
+            # Run placeholder checks
+            if not _check_direction(direction):
+                logger.debug(f"Candidate {idx}: direction check failed (placeholder)")
+                continue
+            if not _blocks_previous_cex(counter_example):
+                logger.debug(f"Candidate {idx}: CE blocking check failed (placeholder)")
+                continue
+
+            validated.append({"candidate": str(repaired_path)})
+
+        # Persist list of validated candidates for analysis
+        (candidates_dir / "validated_candidates.json").write_text(
+            json.dumps(validated, indent=2)
+        )
+
+        if not validated:
+            logger.warning("mut_val: no validated candidates produced")
+            return None
+
+        # Select the first validated candidate as the repaired output for this attempt
+        best_path = Path(validated[0]["candidate"]).resolve()
+        final_repaired = try_dir / "repaired.rs"
+        final_repaired.write_text(Path(best_path).read_text())
+        logger.info(f"mut_val: selected repaired proof {final_repaired}")
+        return final_repaired
+
+    except Exception as e:
+        logger.error(f"mut_val generalization failed: {e}")
+        return None
+
+
+def _classify_direction(verus_error: VerusError, console_error_msg: str) -> str:
+    """
+    Classify whether we should strengthen or weaken invariants.
+
+    Heuristics:
+    - InvFailFront: invariant false at loop entry => likely too strong/wrong => weaken
+    - InvFailEnd or PostCondFail or index/bounds hints => strengthen (inductiveness)
+    - Otherwise default to strengthen
+    """
+    et = verus_error.error
+    if et == VerusErrorType.InvFailFront:
+        return "weaken"
+    if et in (
+        VerusErrorType.InvFailEnd,
+        VerusErrorType.PostCondFail,
+        VerusErrorType.ArithmeticFlow,
+        VerusErrorType.PreCondFailVecLen,
+    ):
+        return "strengthen"
+    return "strengthen"
+
+
+def _mutator_for_error(error_type: VerusErrorType) -> str:
+    """Deterministic mapping from VerusErrorType to a single mutator name."""
+    mapping: Dict[VerusErrorType, str] = {
+        # Invariant wrong at loop entry → likely too strong/wrong
+        VerusErrorType.InvFailFront: "weaken",
+        # Not preserved by loop body / postcondition not implied → strengthen
+        VerusErrorType.InvFailEnd: "strengthen",
+        VerusErrorType.PostCondFail: "strengthen",
+        # Arithmetic/bounds issues → strengthen invariants to capture safe ranges
+        VerusErrorType.ArithmeticFlow: "strengthen",
+        VerusErrorType.PreCondFailVecLen: "strengthen",
+        VerusErrorType.PreCondFail: "strengthen",
+        # Decreases failures → adjust decreases/assert structure first
+        VerusErrorType.DecFailEnd: "misc",
+        VerusErrorType.DecFailCont: "misc",
+        # Assertion-centric issues can benefit from misc (bridging asserts etc.)
+        VerusErrorType.AssertFail: "misc",
+        VerusErrorType.SplitAssertFail: "misc",
+        VerusErrorType.SplitPreFail: "misc",
+        VerusErrorType.SplitPostFail: "misc",
+        VerusErrorType.RecommendNotMet: "misc",
+    }
+    return mapping.get(error_type, "strengthen")
+
+
+def _build_common_context(
+    *,
+    proof_content: str,
+    original_proof: str,
+    diff: str,
+    verus_error: VerusError,
+    console_error_msg: str,
+    counter_example: Optional[CounterExample],
+) -> Dict[str, str]:
+    error_type = verus_error.error.name
+    error_message = verus_error.get_text()
+
+    cex_info = ""
+    if counter_example:
+        cex_info = (
+            f"- Failing State: {counter_example.failing_state}\n"
+            f"- Location: {counter_example.failing_location}\n"
+            f"- Why it fails: {counter_example.error_message}\n"
+        )
+
+    return {
+        "proof_content": proof_content,
+        "original_proof": original_proof,
+        "diff": diff,
+        "error_type": error_type,
+        "error_message": error_message,
+        "console_error_msg": console_error_msg,
+        "cex_info": cex_info,
+    }
+
+
+def _few_shot_examples_strengthen() -> str:
+    return (
+        "<strengthening_mutator>:\n"
+        "example of invariant change: `0 <= i && i < n` -> `0 <= i && i <= j && j <= n`\n"
+        "counter example: loop body may increase j, breaking `i < n` unless related to j\n"
+        "error message: invariant not satisfied at end of loop body\n"
+    )
+
+
+def _few_shot_examples_weaken() -> str:
+    return (
+        "<weakening_mutator>:\n"
+        "example of invariant change: `sum == target && i < n` -> `sum <= target && i <= n`\n"
+        "counter example: at loop start, `sum == target` is not yet established\n"
+        "error message: invariant not satisfied before loop\n"
+    )
+
+
+def _few_shot_examples_misc() -> str:
+    return (
+        "<misc_mutator>:\n"
+        "example changes: adjust decreases clauses to ensure well-founded progress;\n"
+        "add bridging proof assertions that help maintain invariants;\n"
+        "convert a relevant assertion into a loop invariant if inductive;\n"
+        "split a complex invariant into simpler conjuncts that are inductive.\n"
+    )
+
+
+def _guidance_for_error(error_type: str) -> str:
+    guidance_map: Dict[str, str] = {
+        "ArithmeticFlow": (
+            "Fix bounds to prevent overflow/underflow. Options:\n"
+            "- Add bounds: `x <= MAX_VALUE - increment`, `x >= MIN_VALUE + decrement`\n"
+            "- Fix division safety: ensure `divisor != 0` and `divisor > 0` if needed\n"
+            "- Remove overly restrictive bounds that can't be maintained\n"
+            "- Correct wrong bounds that don't match the actual algorithm\n"
+        ),
+        "InvFailFront": (
+            "The invariant is false when the loop starts. Options:\n"
+            "- Weaken the invariant to be true initially\n"
+            "- Remove incorrect invariants that don't hold at loop entry\n"
+            "- Fix wrong conditions in the invariant\n"
+            "- Add intermediate assertions before the loop to establish the invariant\n"
+        ),
+        "InvFailEnd": (
+            "The invariant is not preserved by the loop body. Options:\n"
+            "- Inductive strengthening by adding a new invariant\n"
+            "- Weaken overly strong invariants that can't be maintained\n"
+            "- Remove incorrect invariants that don't match the loop logic\n"
+            "- Fix wrong conditions that don't account for loop body changes\n"
+            "- Add intermediate assertions to help maintain the invariant\n"
+        ),
+        "PostCondFail": (
+            "The postcondition is not satisfied at return. Options:\n"
+            "- Strengthen loop invariants to imply the postcondition\n"
+            "- Remove incorrect invariants that contradict the postcondition\n"
+            "- Add bridging assertions between invariant and postcondition\n"
+            "- Fix wrong invariant conditions that don't lead to the postcondition\n"
+        ),
+        "PreCondFail": (
+            "A function precondition is not satisfied. Options:\n"
+            "- Add assertions before the call\n"
+            "- Strengthen invariants to ensure preconditions hold\n"
+            "- Remove incorrect assertions that prevent the precondition\n"
+            "- Fix wrong conditions in invariants or assertions\n"
+        ),
+        "AssertFail": (
+            "An assertion is failing. Options:\n"
+            "- Strengthen invariants to imply the assertion\n"
+            "- Remove incorrect assertions that don't actually hold\n"
+            "- Fix wrong assertion conditions that don't match the program logic\n"
+            "- Replace assertions with weaker conditions that do hold\n"
+            "- Add intermediate assertions to build up to the failing one\n"
+        ),
+    }
+    return guidance_map.get(error_type, "")
+
+
+def _build_messages(prompt_text: str) -> List[Dict[str, str]]:
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are an expert in Rust/Verus verification. Given a proof, a failing counterexample, and the original unverified proof, "
+                "repair the proof by mutating loop invariants (or decreases/asserts) only, making minimal changes."
+            ),
+        },
+        {"role": "user", "content": prompt_text},
+    ]
+
+
+def _strengthen_mutator(cex: Dict[str, str]) -> str:
+    guidance = _guidance_for_error(cex.get("error_type", ""))
+    fewshots = _few_shot_examples_strengthen()
+    return _compose_prompt(
+        cex=cex, direction="strengthen", guidance=guidance, few_shots=fewshots
+    )
+
+
+def _weaken_mutator(cex: Dict[str, str]) -> str:
+    guidance = _guidance_for_error(cex.get("error_type", ""))
+    fewshots = _few_shot_examples_weaken()
+    return _compose_prompt(
+        cex=cex, direction="weaken", guidance=guidance, few_shots=fewshots
+    )
+
+
+def _misc_mutator(cex: Dict[str, str]) -> str:
+    guidance = _guidance_for_error(cex.get("error_type", ""))
+    fewshots = _few_shot_examples_misc()
+    # Emphasize misc avenues while still forbidding exec/spec edits
+    extra_rules = (
+        "Additionally consider: (a) adjusting decreases clauses to ensure well-founded descent, "
+        "(b) adding bridging proof assertions that are used to maintain invariants, "
+        "(c) converting suitable assertions into loop invariants (and vice versa) when appropriate, "
+        "(d) splitting complex invariants into simpler inductive conjuncts."
+    )
+    return _compose_prompt(
+        cex=cex,
+        direction="misc",
+        guidance=guidance,
+        few_shots=fewshots,
+        extra_rules=extra_rules,
+    )
+
+
+def _compose_prompt(
+    *,
+    cex: Dict[str, str],
+    direction: str,
+    guidance: str,
+    few_shots: str,
+    extra_rules: str | None = None,
+) -> str:
+    rules_extra = f"\n4) {extra_rules}\n" if extra_rules else "\n"
+    task = (
+        "Strengthen the loop invariants to be inductive and block the counterexample."
+        if direction == "strengthen"
+        else (
+            "Weaken or correct the loop invariants so they hold at loop entry."
+            if direction == "weaken"
+            else "Use auxiliary proof constructs to make invariants inductive."
+        )
+    )
+    return f"""
+# Proof Repair via LLM Mutators (mut_val)
+
+You will fix the verification failure by mutating loop invariants only.
+
+Direction: {direction}
+
+Targeted Error:
+- Type: {cex["error_type"]}
+- Message: {cex["error_message"]}
+
+Full verifier console output:
+```
+{cex["console_error_msg"]}
+```
+
+Counterexample (if any):
+{cex["cex_info"]}
+
+Original (canonical) unverified proof (do NOT change its execution code or specs):
+```
+{cex["original_proof"]}
+```
+
+Diff between original and current (use this to avoid unintended edits):
+```
+{cex["diff"]}
+```
+
+Current proof under repair:
+```rust
+{cex["proof_content"]}
+```
+
+Guidance:
+{guidance}
+
+Few-shot mutator patterns (illustrative only):
+{few_shots}
+
+Rules:
+1) Do NOT modify executable code, function signatures, or requires/ensures.
+2) Only modify loop invariants, decreases clauses, and proof-only assertions.
+3) Make minimal changes necessary to achieve verification.{rules_extra}
+
+Task: {task}
+
+Output the COMPLETE fixed code in a single Rust fenced block:
+```rust
+// full fixed code here
+```
+"""
+
+
+def _check_direction(direction: str) -> bool:
+    """Placeholder: always returns True for now."""
+    return True
+
+
+def _blocks_previous_cex(counter_example: Optional[CounterExample]) -> bool:
+    """Placeholder: always returns True for now."""
+    return True

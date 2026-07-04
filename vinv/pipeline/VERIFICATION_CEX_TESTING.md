@@ -11,10 +11,10 @@ export DEEPSEEK_API_KEY=sk-...            # if using deepseek-* models
 export OPENAI_API_KEY=sk-proj-...         # if using gpt-* models
 ```
 
-- Sync the project and ensure Python can import the project modules and Vercode tools:
+- Ensure Python can import the project modules and Vercode tools:
 
 ```bash
-uv sync
+cd /Users/sun/Desktop/code/GithubLink/verusinv_backup/verusinv
 export PYTHONPATH=verus-proof-synthesis/code:$(pwd)
 ```
 
@@ -23,15 +23,6 @@ export PYTHONPATH=verus-proof-synthesis/code:$(pwd)
 ```bash
 export LYNETTE_PATH=$(pwd)/verus-proof-synthesis/utils/lynette/source/target/debug/lynette
 # export OLD_VERUS_PATH=...  # only if your local Verus setup expects it
-```
-
-### 1.5) Common helper CLI
-
-Use the unified CLI for the common assume/assert utilities:
-
-```bash
-uv run vinv assume convert vinv/pipeline/assume/example_input/example-2.rs --output-dir /tmp/assume_out
-uv run vinv assume validate-cex /tmp/assume_out/example-2.rs --assign i=0 --assign j=1
 ```
 
 ### 2) What the verification strategy does
@@ -53,7 +44,7 @@ Artifacts per attempt are written under a per-file `try_1/` directory (see secti
 The following runs verification CEX on `example-2.rs` using `deepseek-chat` and writes artifacts under `results/pipeline/verification_ds_focus/example-2_deepseekchat/try_1/`.
 
 ```bash
-DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY} OPENAI_API_KEY=${OPENAI_API_KEY} uv run python - <<'PY'
+DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY} OPENAI_API_KEY=${OPENAI_API_KEY} python - <<'PY'
 import json, os, sys, shutil
 from pathlib import Path
 
@@ -111,7 +102,7 @@ Notes:
 This runs the verification CEX on all `.rs` files in `vinv/pipeline/assume/example_input/` with `deepseek-chat`, writing per-file artifacts and a summary JSON.
 
 ```bash
-DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY} OPENAI_API_KEY=${OPENAI_API_KEY} uv run python - <<'PY'
+DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY} OPENAI_API_KEY=${OPENAI_API_KEY} python - <<'PY'
 import os, sys, json, time
 from pathlib import Path
 import shutil

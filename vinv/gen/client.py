@@ -1,37 +1,13 @@
-from __future__ import annotations
-
 import os
 import time
 import traceback
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 import openai
 from anthropic import Anthropic
 from anthropic import APIError as AnthropicAPIError
 from anthropic import RateLimitError as AnthropicRateLimitError
-
 from vinv.gen.cost_report import record_llm_call
-
-Message = dict[str, str]
-
-
-@dataclass(frozen=True)
-class ClientConfig:
-    kind: str
-    api_key_env: str
-    base_url_env: str | None = None
-    default_base_url: str | None = None
-    supports_n: bool = False
-    use_max_completion_tokens: bool = False
-
-
-def build_messages(prompt: str, system: str | None = None) -> list[Message]:
-    messages: list[Message] = []
-    if system is not None:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": prompt})
-    return messages
 
 
 def _record_task_call_usage(
@@ -44,7 +20,7 @@ def _record_task_call_usage(
     end_ts: float,
     usage_obj: Any,
     success: bool,
-    error_type: str | None = None,
+    error_type: Optional[str] = None,
 ) -> None:
     try:
         record_llm_call(
@@ -59,179 +35,137 @@ def _record_task_call_usage(
             error_type=error_type,
         )
     except Exception:
+        # Never fail the main flow due to logging issues
         pass
 
 
-def _client_config(model: str) -> ClientConfig:
-    if model.startswith(("gpt", "o4-mini")):
-        return ClientConfig(
-            kind="openai",
-            api_key_env="OPENAI_API_KEY",
-            base_url_env="OPENAI_API_BASE",
-            default_base_url="https://api.openai.com/v1",
-            supports_n=True,
-            use_max_completion_tokens=model.startswith("o4-mini"),
+def request_conversation_one(
+    msg_list: List[Dict],
+    model="gpt-4o",
+    max_retry=5,
+    temperature=1.0,
+    max_tokens=4096,
+    task_id: str = "default_task",
+    prompt_type_id: str = "default_prompt",
+) -> str:
+    if model.startswith("gpt") or model.startswith("o4-mini"):
+        client = openai.OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            base_url=os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"),
         )
-    if model.startswith(("deepseek", "qwen/qwen3-coder")):
-        return ClientConfig(
-            kind="openai",
-            api_key_env="OPENROUTER_API_KEY",
-            base_url_env="OPENROUTER_QWEN_API_BASE",
-            default_base_url="https://openrouter.ai/api/v1",
+    elif model.startswith("deepseek"):  # DeepSeek-V3-0324
+        # client = openai.OpenAI(
+        #     api_key=os.getenv("DEEPSEEK_API_KEY"),
+        #     base_url=os.getenv("DEEPSEEK_API_BASE", "https://api.deepseek.com/v1"),
+        # )
+        client = openai.OpenAI(
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            base_url=os.getenv(
+                "OPENROUTER_QWEN_API_BASE", "https://openrouter.ai/api/v1"
+            ),
         )
-    if model.startswith("anthropic/claude-"):
-        return ClientConfig(
-            kind="openai",
-            api_key_env="OPENROUTER_API_KEY",
-            base_url_env="OPENROUTER_API_BASE",
-            default_base_url="https://openrouter.ai/api/v1",
+    elif model.startswith("qwen/qwen3-coder"):
+        client = openai.OpenAI(
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            base_url=os.getenv(
+                "OPENROUTER_QWEN_API_BASE", "https://openrouter.ai/api/v1"
+            ),
         )
-    if model.startswith("claude"):
-        return ClientConfig(kind="anthropic", api_key_env="ANTHROPIC_API_KEY")
-    raise NotImplementedError(f"Unsupported model: {model}")
-
-
-def _make_client(config: ClientConfig) -> Any:
-    if config.kind == "anthropic":
-        return Anthropic(api_key=os.getenv(config.api_key_env))
-    return openai.OpenAI(
-        api_key=os.getenv(config.api_key_env),
-        base_url=os.getenv(config.base_url_env, config.default_base_url),
-    )
-
-
-def _split_system_message(messages: list[Message]) -> tuple[str | None, list[Message]]:
-    system = None
-    non_system = []
-    for message in messages:
-        if message["role"] == "system":
-            system = message["content"]
-            continue
-        non_system.append(message)
-    return system, non_system
-
-
-def _anthropic_usage(response: Any) -> dict[str, int]:
-    return {
-        "prompt_tokens": response.usage.input_tokens,
-        "completion_tokens": response.usage.output_tokens,
-        "total_tokens": response.usage.input_tokens + response.usage.output_tokens,
-    }
-
-
-def _openai_params(
-    *,
-    model: str,
-    messages: list[Message],
-    temperature: float,
-    max_tokens: int,
-    num_choices: int,
-    config: ClientConfig,
-) -> dict[str, Any]:
-    params: dict[str, Any] = {
-        "model": model,
-        "messages": messages,
-        "temperature": temperature,
-    }
-    if num_choices > 1:
-        params["n"] = num_choices
-    if config.use_max_completion_tokens:
-        params["max_completion_tokens"] = max_tokens * 10
+    elif model.startswith("anthropic/claude-"):
+        client = openai.OpenAI(
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            base_url=os.getenv("OPENROUTER_API_BASE", "https://openrouter.ai/api/v1"),
+        )
+    elif model.startswith("claude"):
+        client = Anthropic(
+            api_key=os.getenv("ANTHROPIC_API_KEY"),
+        )
     else:
-        params["max_tokens"] = max_tokens
-    return params
-
-
-def _request_batch(
-    *,
-    client: Any,
-    config: ClientConfig,
-    messages: list[Message],
-    model: str,
-    temperature: float,
-    max_tokens: int,
-    num_choices: int,
-) -> tuple[list[str], Any]:
-    if config.kind == "anthropic":
-        system, anthropic_messages = _split_system_message(messages)
-        params: dict[str, Any] = {
-            "model": model,
-            "messages": anthropic_messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-        if system is not None:
-            params["system"] = system
-        response = client.messages.create(**params)
-        contents = [block.text for block in response.content if hasattr(block, "text")]
-        return ["".join(contents)], _anthropic_usage(response)
-
-    response = client.chat.completions.create(
-        **_openai_params(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            num_choices=num_choices,
-            config=config,
+        raise NotImplementedError(
+            f"Model {model} is not supported. Please use a valid model name."
         )
-    )
-    return [choice.message.content or "" for choice in response.choices], getattr(
-        response, "usage", None
-    )
 
-
-def _request_messages(
-    messages: list[Message],
-    *,
-    model: str,
-    max_retry: int,
-    temperature: float,
-    max_tokens: int,
-    num_responses: int,
-    task_id: str,
-    prompt_type_id: str,
-) -> list[str]:
-    config = _client_config(model)
-    client = _make_client(config)
-    responses: list[str] = []
+    # Exponential backoff for rate limits
     backoff_seconds = 1.0
-    retries_left = max_retry
+    max_backoff_seconds = 60.0
 
-    while len(responses) < num_responses:
-        num_choices = num_responses - len(responses) if config.supports_n else 1
-        start_ts = time.time()
+    while True:
         try:
-            batch, usage = _request_batch(
-                client=client,
-                config=config,
-                messages=messages,
-                model=model,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                num_choices=num_choices,
-            )
+            start_ts = time.time()
+
+            if model.startswith("claude"):
+                # Anthropic API - extract system message if present
+                system_message = None
+                anthropic_messages = []
+                for msg in msg_list:
+                    if msg["role"] == "system":
+                        system_message = msg["content"]
+                    else:
+                        anthropic_messages.append(msg)
+
+                # Create API call parameters
+                api_params = {
+                    "model": model,
+                    "max_tokens": max_tokens,
+                    "messages": anthropic_messages,
+                    "temperature": temperature,
+                }
+                if system_message:
+                    api_params["system"] = system_message
+
+                response = client.messages.create(**api_params)
+
+                # Create a usage object compatible with our tracking
+                class AnthropicUsage:
+                    def __init__(self, input_tokens, output_tokens):
+                        self.prompt_tokens = input_tokens
+                        self.completion_tokens = output_tokens
+                        self.total_tokens = input_tokens + output_tokens
+
+                usage = AnthropicUsage(
+                    response.usage.input_tokens, response.usage.output_tokens
+                )
+                content = response.content[0].text
+            else:
+                # OpenAI-compatible API (includes anthropic/claude- via OpenRouter)
+                params = {
+                    "model": model,
+                    "messages": msg_list,
+                    "temperature": temperature,
+                }
+                if model.startswith("o4-mini"):
+                    params["max_completion_tokens"] = max_tokens * 10
+                else:
+                    params["max_tokens"] = max_tokens
+                response = client.chat.completions.create(**params)
+                usage = getattr(response, "usage", None)
+                content = response.choices[0].message.content
+
+            # Record token usage for this call
+            tid = task_id
+            ptid = prompt_type_id
             _record_task_call_usage(
-                task_id=task_id,
-                prompt_type_id=prompt_type_id,
+                task_id=tid,
+                prompt_type_id=ptid,
                 model=model,
-                num_choices=num_choices,
+                num_choices=1,
                 start_ts=start_ts,
                 end_ts=time.time(),
                 usage_obj=usage,
                 success=True,
             )
-            responses.extend(batch)
-            backoff_seconds = 1.0
-            continue
+            return content
         except (openai.RateLimitError, AnthropicRateLimitError):
             traceback.print_exc()
             print(f"Rate limit exceeded, waiting {backoff_seconds:.1f} seconds...")
+            # Record failed attempt
+            tid = task_id
+            ptid = prompt_type_id
             _record_task_call_usage(
-                task_id=task_id,
-                prompt_type_id=prompt_type_id,
+                task_id=tid,
+                prompt_type_id=ptid,
                 model=model,
-                num_choices=num_choices,
+                num_choices=1,
                 start_ts=start_ts,
                 end_ts=time.time(),
                 usage_obj=None,
@@ -239,33 +173,40 @@ def _request_messages(
                 error_type="RateLimitError",
             )
             time.sleep(backoff_seconds)
-            backoff_seconds = min(backoff_seconds * 2.0, 60.0)
+            backoff_seconds = min(backoff_seconds * 2.0, max_backoff_seconds)
             continue
         except (openai.InternalServerError, openai.APIError, AnthropicAPIError):
-            retries_left -= 1
+            max_retry -= 1
+            if max_retry < 0:
+                traceback.print_exc()
+                print("Max retries exceeded, exiting...")
+                break
+            # Record failed attempt
+            tid = task_id
+            ptid = prompt_type_id
             _record_task_call_usage(
-                task_id=task_id,
-                prompt_type_id=prompt_type_id,
+                task_id=tid,
+                prompt_type_id=ptid,
                 model=model,
-                num_choices=num_choices,
+                num_choices=1,
                 start_ts=start_ts,
                 end_ts=time.time(),
                 usage_obj=None,
                 success=False,
                 error_type="ServerOrAPIError",
             )
-            if retries_left < 0:
-                traceback.print_exc()
-                break
             time.sleep(5)
             continue
         except Exception:
             traceback.print_exc()
+            # Record failed attempt
+            tid = task_id
+            ptid = prompt_type_id
             _record_task_call_usage(
-                task_id=task_id,
-                prompt_type_id=prompt_type_id,
+                task_id=tid,
+                prompt_type_id=ptid,
                 model=model,
-                num_choices=num_choices,
+                num_choices=1,
                 start_ts=start_ts,
                 end_ts=time.time(),
                 usage_obj=None,
@@ -274,96 +215,491 @@ def _request_messages(
             )
             break
 
-    if responses:
-        return responses[:num_responses]
     raise RuntimeError("Failed to get response from API after all retries")
 
 
-def request_prompt_one(
-    prompt: str,
-    *,
-    system: str | None = None,
-    model: str = "gpt-4o",
-    max_retry: int = 5,
-    temperature: float = 1.0,
-    max_tokens: int = 4096,
-    task_id: str = "default_task",
-    prompt_type_id: str = "default_prompt",
-) -> str:
-    return _request_messages(
-        build_messages(prompt, system),
-        model=model,
-        max_retry=max_retry,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        num_responses=1,
-        task_id=task_id,
-        prompt_type_id=prompt_type_id,
-    )[0]
-
-
-def request_prompt_multi_response(
-    prompt: str,
-    *,
-    system: str | None = None,
-    model: str = "gpt-4o",
-    max_retry: int = 5,
-    temperature: float = 1.0,
-    max_tokens: int = 4096,
-    num_responses: int = 5,
-    task_id: str = "default_task",
-    prompt_type_id: str = "default_prompt",
-) -> list[str]:
-    return _request_messages(
-        build_messages(prompt, system),
-        model=model,
-        max_retry=max_retry,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        num_responses=num_responses,
-        task_id=task_id,
-        prompt_type_id=prompt_type_id,
-    )
-
-
-def request_conversation_one(
-    msg_list: list[Message],
-    model: str = "gpt-4o",
-    max_retry: int = 5,
-    temperature: float = 1.0,
-    max_tokens: int = 4096,
-    task_id: str = "default_task",
-    prompt_type_id: str = "default_prompt",
-) -> str:
-    return _request_messages(
-        msg_list,
-        model=model,
-        max_retry=max_retry,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        num_responses=1,
-        task_id=task_id,
-        prompt_type_id=prompt_type_id,
-    )[0]
-
-
 def request_conversation_multi_response(
-    msg_list: list[Message],
-    model: str = "gpt-4o",
-    max_retry: int = 5,
-    temperature: float = 1.0,
-    max_tokens: int = 4096,
-    num_responses: int = 5,
+    msg_list: List[Dict],
+    model="gpt-4o",
+    max_retry=5,
+    temperature=1.0,
+    max_tokens=4096,
+    num_responses=5,
     task_id: str = "default_task",
     prompt_type_id: str = "default_prompt",
-) -> list[str]:
-    return _request_messages(
-        msg_list,
-        model=model,
-        max_retry=max_retry,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        num_responses=num_responses,
-        task_id=task_id,
-        prompt_type_id=prompt_type_id,
-    )
+) -> List[str]:
+    """
+    Return multiple chat completions for the same prompt.
+
+    - For OpenAI GPT models, use the 'n' parameter to fetch multiple choices in one call.
+    - For DeepSeek models (which do not support 'n'), issue multiple single-choice calls and concatenate results.
+    """
+    responses: List[str] = []
+
+    # Branch by model family
+    if model.startswith("gpt") or model.startswith("o4-mini"):
+        client = openai.OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            base_url=os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"),
+        )
+        # Exponential backoff for rate limits
+        backoff_seconds = 1.0
+        max_backoff_seconds = 60.0
+
+        while len(responses) < num_responses:
+            try:
+                start_ts = time.time()
+                remaining = num_responses - len(responses)
+                params = {
+                    "model": model,
+                    "messages": msg_list,
+                    "temperature": temperature,
+                    "n": remaining,
+                }
+                if model.startswith("o4-mini"):
+                    params["max_completion_tokens"] = max_tokens * 10
+                else:
+                    params["max_tokens"] = max_tokens
+                response = client.chat.completions.create(**params)
+                usage = getattr(response, "usage", None)
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=remaining,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=usage,
+                    success=True,
+                )
+                responses.extend(
+                    [choice.message.content for choice in response.choices]
+                )
+                # Reset backoff after success
+                backoff_seconds = 1.0
+            except openai.RateLimitError:
+                traceback.print_exc()
+                print(f"Rate limit exceeded, waiting {backoff_seconds:.1f} seconds...")
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=remaining,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="RateLimitError",
+                )
+                time.sleep(backoff_seconds)
+                backoff_seconds = min(backoff_seconds * 2.0, max_backoff_seconds)
+                continue
+            except (openai.InternalServerError, openai.APIError):
+                max_retry -= 1
+                if max_retry < 0:
+                    traceback.print_exc()
+                    print("Max retries exceeded, exiting...")
+                    break
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=remaining,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="ServerOrAPIError",
+                )
+                time.sleep(5)
+                continue
+            except Exception:
+                traceback.print_exc()
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=remaining,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="Exception",
+                )
+                break
+        return responses[:num_responses]
+
+    elif model.startswith("deepseek"):
+        # DeepSeek does not support 'n'; make num_responses single calls
+        # client = openai.OpenAI(
+        #     api_key=os.getenv("DEEPSEEK_API_KEY"),
+        #     base_url=os.getenv("DEEPSEEK_API_BASE", "https://api.deepseek.com/v1"),
+        # )
+        client = openai.OpenAI(
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            base_url=os.getenv(
+                "OPENROUTER_QWEN_API_BASE", "https://openrouter.ai/api/v1"
+            ),
+        )
+        # Exponential backoff for rate limits
+        backoff_seconds = 1.0
+        max_backoff_seconds = 60.0
+
+        for i in range(num_responses):
+            try:
+                start_ts = time.time()
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=msg_list,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                usage = getattr(response, "usage", None)
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=usage,
+                    success=True,
+                )
+                responses.append(response.choices[0].message.content)
+                # Reset backoff after success
+                backoff_seconds = 1.0
+            except openai.RateLimitError:
+                traceback.print_exc()
+                print(f"Rate limit exceeded, waiting {backoff_seconds:.1f} seconds...")
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="RateLimitError",
+                )
+                time.sleep(backoff_seconds)
+                backoff_seconds = min(backoff_seconds * 2.0, max_backoff_seconds)
+                continue
+            except (openai.InternalServerError, openai.APIError):
+                max_retry -= 1
+                if max_retry < 0:
+                    traceback.print_exc()
+                    print("Max retries exceeded, exiting...")
+                    break
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="ServerOrAPIError",
+                )
+                time.sleep(5)
+                continue
+            except Exception:
+                traceback.print_exc()
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="Exception",
+                )
+                break
+        return responses[:num_responses]
+
+    elif model.startswith("qwen/qwen3-coder"):
+        client = openai.OpenAI(
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            base_url=os.getenv(
+                "OPENROUTER_QWEN_API_BASE", "https://openrouter.ai/api/v1"
+            ),
+        )
+        # Exponential backoff for rate limits
+        backoff_seconds = 1.0
+        max_backoff_seconds = 60.0
+
+        for i in range(num_responses):
+            try:
+                start_ts = time.time()
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=msg_list,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                usage = getattr(response, "usage", None)
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=usage,
+                    success=True,
+                )
+                responses.append(response.choices[0].message.content)
+                # Reset backoff after success
+                backoff_seconds = 1.0
+            except openai.RateLimitError:
+                traceback.print_exc()
+                print(f"Rate limit exceeded, waiting {backoff_seconds:.1f} seconds...")
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="RateLimitError",
+                )
+                time.sleep(backoff_seconds)
+                backoff_seconds = min(backoff_seconds * 2.0, max_backoff_seconds)
+                continue
+            except (openai.InternalServerError, openai.APIError):
+                max_retry -= 1
+                if max_retry < 0:
+                    traceback.print_exc()
+                    print("Max retries exceeded, exiting...")
+                    break
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="ServerOrAPIError",
+                )
+                time.sleep(5)
+                continue
+            except Exception:
+                traceback.print_exc()
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="Exception",
+                )
+                break
+        return responses[:num_responses]
+
+    elif model.startswith("anthropic/claude-"):
+        # OpenRouter Claude does not support 'n'; make num_responses single calls
+        client = openai.OpenAI(
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            base_url=os.getenv("OPENROUTER_API_BASE", "https://openrouter.ai/api/v1"),
+        )
+        # Exponential backoff for rate limits
+        backoff_seconds = 1.0
+        max_backoff_seconds = 60.0
+
+        for i in range(num_responses):
+            try:
+                start_ts = time.time()
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=msg_list,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                usage = getattr(response, "usage", None)
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=usage,
+                    success=True,
+                )
+                responses.append(response.choices[0].message.content)
+                # Reset backoff after success
+                backoff_seconds = 1.0
+            except openai.RateLimitError:
+                traceback.print_exc()
+                print(f"Rate limit exceeded, waiting {backoff_seconds:.1f} seconds...")
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="RateLimitError",
+                )
+                time.sleep(backoff_seconds)
+                backoff_seconds = min(backoff_seconds * 2.0, max_backoff_seconds)
+                continue
+            except (openai.InternalServerError, openai.APIError):
+                max_retry -= 1
+                if max_retry < 0:
+                    traceback.print_exc()
+                    print("Max retries exceeded, exiting...")
+                    break
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="ServerOrAPIError",
+                )
+                time.sleep(5)
+                continue
+            except Exception:
+                traceback.print_exc()
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="Exception",
+                )
+                break
+        return responses[:num_responses]
+
+    elif model.startswith("claude"):
+        # Claude does not support 'n'; make num_responses single calls
+        client = Anthropic(
+            api_key=os.getenv("ANTHROPIC_API_KEY"),
+        )
+        # Extract system message if present
+        system_message = None
+        anthropic_messages = []
+        for msg in msg_list:
+            if msg["role"] == "system":
+                system_message = msg["content"]
+            else:
+                anthropic_messages.append(msg)
+
+        # Exponential backoff for rate limits
+        backoff_seconds = 1.0
+        max_backoff_seconds = 60.0
+
+        for i in range(num_responses):
+            try:
+                start_ts = time.time()
+
+                # Create API call parameters
+                api_params = {
+                    "model": model,
+                    "max_tokens": max_tokens,
+                    "messages": anthropic_messages,
+                    "temperature": temperature,
+                }
+                if system_message:
+                    api_params["system"] = system_message
+
+                response = client.messages.create(**api_params)
+
+                # Create a usage object compatible with our tracking
+                class AnthropicUsage:
+                    def __init__(self, input_tokens, output_tokens):
+                        self.prompt_tokens = input_tokens
+                        self.completion_tokens = output_tokens
+                        self.total_tokens = input_tokens + output_tokens
+
+                usage = AnthropicUsage(
+                    response.usage.input_tokens, response.usage.output_tokens
+                )
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=usage,
+                    success=True,
+                )
+                responses.append(response.content[0].text)
+                # Reset backoff after success
+                backoff_seconds = 1.0
+            except AnthropicRateLimitError:
+                traceback.print_exc()
+                print(f"Rate limit exceeded, waiting {backoff_seconds:.1f} seconds...")
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="RateLimitError",
+                )
+                time.sleep(backoff_seconds)
+                backoff_seconds = min(backoff_seconds * 2.0, max_backoff_seconds)
+                continue
+            except AnthropicAPIError:
+                max_retry -= 1
+                if max_retry < 0:
+                    traceback.print_exc()
+                    print("Max retries exceeded, exiting...")
+                    break
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="ServerOrAPIError",
+                )
+                time.sleep(5)
+                continue
+            except Exception:
+                traceback.print_exc()
+                _record_task_call_usage(
+                    task_id=task_id,
+                    prompt_type_id=prompt_type_id,
+                    model=model,
+                    num_choices=1,
+                    start_ts=start_ts,
+                    end_ts=time.time(),
+                    usage_obj=None,
+                    success=False,
+                    error_type="Exception",
+                )
+                break
+        return responses[:num_responses]
+    else:
+        raise NotImplementedError(
+            f"Model {model} is not supported. Please use a valid model name."
+        )

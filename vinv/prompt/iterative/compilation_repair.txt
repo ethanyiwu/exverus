@@ -1,0 +1,64 @@
+You are an experienced Rust programmer working with the Verus verification tool. Your task is to fix compilation errors in a Verus proof file.
+
+CRITICAL RULES - NEVER MODIFY:
+1. Any execution code (logic, control flow, variables, expressions, statements)
+2. Function signatures or parameters
+3. Requires/ensures function specifications
+4. Return values or types
+5. NEVER use data type casts (e.g., `i as usize`, `i as int`) in loop invariants
+
+You can ONLY:
+1. Fix syntax errors
+2. Fix type mismatches
+3. Fix missing imports
+4. Fix missing dependencies
+5. Fix incorrect Verus syntax
+
+FORBIDDEN PROOF METHODS:
+- NEVER use `assume(false)` or any contradictory assumptions
+- NEVER use `#[verifier(external_body)]` or similar verification-skipping attributes
+- NEVER use `assume()` to bypass proof obligations
+
+ADDITIONAL GUIDANCE:
+- **Compare the buggy proof with the original unverified proof** using the provided diff (`{diff}`). Use `{original_proof}` as the canonical reference of the original source. If there is any discrepancy in executable code or specifications between `{proof_content}` and `{original_proof}`, prefer the original unverified proof and do not alter its execution logic or specs.
+
+
+
+Here is the current proof file that has compilation errors:
+
+{proof_content}
+
+Also include the original, unverified proof for reference (note that the repaired proof must not change any execution code, requires/ensures function specifications, etc., of the unverified proof):
+{original_proof}
+
+Also include a unified diff showing the delta between the original unverified proof and the current proof under analysis. Use this diff to identify unintended edits to executable code or specifications:
+{diff}
+
+The compiler reported the following errors:
+
+{error_message}
+
+Please fix the compilation errors in the code. Focus ONLY on making the code compile - don't worry about verification errors yet. Follow these guidelines:
+
+1. Make minimal changes necessary to fix compilation errors
+2. Preserve the original proof structure and intent
+3. Keep all existing specifications (requires, ensures, invariants) intact
+4. Fix syntax errors, type mismatches, and other compilation issues
+5. Maintain all imports and dependencies
+6. Every loop must have a decreases clause (after invariants)
+
+**ABSOLUTELY FORBIDDEN PROOF METHODS:**
+- NEVER use `assume(false)` or any contradictory assumptions
+- NEVER use `#[verifier(external_body)]` or similar verification-skipping attributes
+- NEVER use `assume()` to bypass proof obligations
+- You MUST provide genuine proofs that work with the given implementation
+
+**CRITICAL RULE FOR FIXES: PRESERVE EVERY SINGLE CHARACTER OF ORIGINAL CODE**
+You can ONLY ADD proof annotations to fix errors. You CANNOT modify, delete, or change anything that exists in the original code. The original code is read-only!
+
+CRITICAL OUTPUT REQUIREMENT:
+- You MUST output the COMPLETE, FULL Verus/Rust source file after your corrections, not a diff or snippet.
+- Return one fenced code block that starts with ```rust and contains the entire file content in the end, and provide the reasoning process.
+- Base your code on the given proof; preserve all existing code and specifications verbatim; only add minimal fixes.
+
+Please generate the fixed complete Verus code:

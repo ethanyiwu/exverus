@@ -9,6 +9,10 @@ CLEANED_BENCHMARK_ROOT_DIR = ROOT_DIR / "cleaned-verusbench"
 ADDITIONAL_BENCHMARK_ROOT_DIR = ROOT_DIR / "Benchmarks"
 PROMPT_ROOT_DIR = ROOT_DIR / "vinv" / "prompt"
 RESULTS_ROOT_DIR = ROOT_DIR / "results"
+INV_GEN_RESULTS_DIR = RESULTS_ROOT_DIR / "inv_gen"
+INV_GEN_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+INV_GEN_TRACE_RESULTS_DIR = RESULTS_ROOT_DIR / "inv_gen_trace"
+INV_GEN_TRACE_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 PERTURB_RESULTS_DIR = RESULTS_ROOT_DIR / "perturb"
 OBFUSC_RESULTS_DIR = PERTURB_RESULTS_DIR / "obfuscate"
 OBFUSC_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -70,24 +74,16 @@ TRAJECTORY_RESULT_FILE = (
 
 AUTOVERUS_ALMOST_CORRECT_RESULTS_DIR = ROOT_DIR / "Benchmarks" / "one-step-dataset"
 VERUS_PATH = shutil.which("verus")
+if VERUS_PATH is None:
+    raise EnvironmentError(
+        "Verus executable not found in PATH. Please ensure Verus is installed and available."
+    )
+
 OLD_VERUS_PATH = os.environ.get("OLD_VERUS_PATH")
-
-
-def resolve_verus_path(use_old_verus: bool = False) -> str:
-    if use_old_verus:
-        verus_path = os.environ.get("OLD_VERUS_PATH")
-        if not verus_path:
-            raise EnvironmentError(
-                "OLD_VERUS_PATH environment variable is not set. Please set it to the path of the old Verus executable."
-            )
-        return verus_path
-
-    verus_path = shutil.which("verus")
-    if verus_path is None:
-        raise EnvironmentError(
-            "Verus executable not found in PATH. Please ensure Verus is installed and available."
-        )
-    return verus_path
+if not OLD_VERUS_PATH:
+    raise EnvironmentError(
+        "OLD_VERUS_PATH environment variable is not set. Please set it to the path of the old Verus executable."
+    )
 
 # Mutant ranking mode configuration
 # - "cex_block": filter out non-compilable candidates, rank by blocked CEXs (default)
@@ -100,6 +96,26 @@ if mut_ranking_mode not in ALLOWED_MUT_RANKING_MODES:
     )
 # Uppercase alias for consistency with other constants
 MUT_RANKING_MODE = mut_ranking_mode
+
+INV_GEN_PLAIN_PROMPT_FILE = PROMPT_ROOT_DIR / "inv_gen_plain.txt"
+SOLUTION_GEN_PROMPT_FILE = PROMPT_ROOT_DIR / "cf_rust_solution_gen.txt"
+OBFUSC_PROMPT_FILE = PROMPT_ROOT_DIR / "obfuscate_plain.txt"
+
+TEST_DRIVER_GEN_STDIN_PROMPT_FILE = (
+    PROMPT_ROOT_DIR / "test_driver" / "driver_gen_stdin.txt"
+)
+TEST_DRIVER_GEN_HARDCODED_PROMPT_FILE = (
+    PROMPT_ROOT_DIR / "test_driver" / "driver_gen_hardcoded.txt"
+)
+TEST_DRIVER_GEN_CEX_PROMPT_FILE = PROMPT_ROOT_DIR / "test_driver" / "driver_gen_cex.txt"
+
+REPAIR_WITH_TRACE_PROMPT_FILE = PROMPT_ROOT_DIR / "trace_repair.txt"
+
+NAIVE_REPAIR_PROMPT_FILE = PROMPT_ROOT_DIR / "iterative" / "naive_repair.txt"
+
+COMPILATION_REPAIR_PROMPT_FILE = (
+    PROMPT_ROOT_DIR / "iterative" / "compilation_repair.txt"
+)
 
 VB_BENCHMARK_VERIFIED_ENTRY_POINTS = {
     # "humaneval": BENCHMARK_ROOT_DIR / "human-eval-verus" / "tasks",
@@ -187,6 +203,58 @@ VSBHERB_BENCHMARK_UNVERIFIED_ENTRY_POINTS = {
     / "unverified",
 }
 
+CF_SPECIFIED_PROBLEMS = [
+    "1037_E",
+    "1081_G",
+    "1129_D",
+    "1149_E",
+    "1208_D",
+    "1227_D1",
+    "1269_E",
+    "1291_E",
+    "1311_F",
+    "1334_D",
+    "1374_E1",
+    "1421_B",
+    "1490_G",
+    "1513_C",
+    "1540_C1",
+    "260_B",
+    "425_D",
+    "634_C",
+    "663_A",
+    "687_D",
+    "754_E",
+    "7_B",
+    "846_E",
+    "963_B",
+    "990_E",
+    "1065_F",
+    "1107_D",
+    "1176_F",
+    "1195_D2",
+    "1277_E",
+    "133_D",
+    "1424_N",
+    "1446_D2",
+    "1497_D",
+    "1547_C",
+    "242_C",
+    "316_B2",
+    "361_C",
+    "405_E",
+    "455_C",
+    "621_D",
+    "691_D",
+    "760_F",
+    "875_D",
+    "89_C",
+    "920_E",
+    "1081_D",
+    "1100_D",
+    "1149_B",
+    "1397_C",
+]
 
 # proofs that cannot be verified by original verus
 VB_VERIFY_FAILED_BLACKLIST = [
@@ -197,91 +265,91 @@ VB_VERIFY_FAILED_BLACKLIST = [
 ]
 
 # cherry-pick 10 proofs that were solved (invariant mask-filling) without obfuscation for testing
-VB_SPECIFIED_TASKIDS = [
-    "cloverbench_linear_search2",
-    "cloverbench_is_prime",
-    "cloverbench_binary_search",
-    "mbpp_task_id_804",
-    "mbpp_task_id_460",
-    "mbpp_task_id_8",
-    "misc_choose_odd",
-    "misc_binary_search",
-    "misc_fib",
-    "misc_max_index",
-]
 # VB_SPECIFIED_TASKIDS = [
-#     "cloverbench_all_digits_strong",
-#     "diffy_condm",
-#     "diffy_s3lif",
-#     "mbpp_task_id_414",
-#     "cloverbench_array_append_strong",
-#     "diffy_condn",
-#     "diffy_s42if",
-#     "mbpp_task_id_460",
-#     "cloverbench_array_concat_strong",
-#     "diffy_ms1",
-#     "diffy_s4if",
-#     "mbpp_task_id_461",
-#     "cloverbench_array_copy_strong",
-#     "diffy_ms2",
-#     "diffy_s4lif",
-#     "mbpp_task_id_472",
-#     "cloverbench_array_product_strong",
-#     "diffy_ms3",
-#     "diffy_s52if",
-#     "mbpp_task_id_476",
-#     "cloverbench_array_sum_strong",
-#     "diffy_ms4",
-#     "diffy_s5if",
-#     "mbpp_task_id_477",
-#     "cloverbench_binary_search",
-#     "diffy_ms5",
-#     "diffy_s5lif",
-#     "mbpp_task_id_572",
-#     "cloverbench_cal_div",
-#     "diffy_res1",
-#     "diffy_sina1",
-#     "mbpp_task_id_576",
-#     "cloverbench_is_prime",
-#     "diffy_res1o",
-#     "diffy_sina2",
-#     "mbpp_task_id_624",
 #     "cloverbench_linear_search2",
-#     "diffy_res2o",
-#     "diffy_sina3",
-#     "mbpp_task_id_644",
-#     "cloverbench_two_sum",
-#     "diffy_s12if",
-#     "diffy_sina4",
-#     "mbpp_task_id_70",
-#     "diffy_brs1",
-#     "diffy_s1if",
-#     "diffy_sina5",
-#     "mbpp_task_id_741",
-#     "diffy_brs2",
-#     "diffy_s1lif",
-#     "mbpp_task_id_105",
-#     "mbpp_task_id_769",
-#     "diffy_brs3",
-#     "diffy_s22if",
-#     "mbpp_task_id_113",
-#     "mbpp_task_id_798",
-#     "diffy_brs4",
-#     "diffy_s2if",
-#     "mbpp_task_id_161",
-#     "mbpp_task_id_8",
-#     "diffy_brs5",
-#     "diffy_s2lif",
-#     "mbpp_task_id_230",
+#     "cloverbench_is_prime",
+#     "cloverbench_binary_search",
 #     "mbpp_task_id_804",
-#     "diffy_conda",
-#     "diffy_s32if",
-#     "mbpp_task_id_240",
-#     "mbpp_task_id_95",
-#     "diffy_condg",
-#     "diffy_s3if",
-#     "mbpp_task_id_399",
+#     "mbpp_task_id_460",
+#     "mbpp_task_id_8",
+#     "misc_choose_odd",
+#     "misc_binary_search",
+#     "misc_fib",
+#     "misc_max_index",
 # ]
+VB_SPECIFIED_TASKIDS = [
+    "cloverbench_all_digits_strong",
+    "diffy_condm",
+    "diffy_s3lif",
+    "mbpp_task_id_414",
+    "cloverbench_array_append_strong",
+    "diffy_condn",
+    "diffy_s42if",
+    "mbpp_task_id_460",
+    "cloverbench_array_concat_strong",
+    "diffy_ms1",
+    "diffy_s4if",
+    "mbpp_task_id_461",
+    "cloverbench_array_copy_strong",
+    "diffy_ms2",
+    "diffy_s4lif",
+    "mbpp_task_id_472",
+    "cloverbench_array_product_strong",
+    "diffy_ms3",
+    "diffy_s52if",
+    "mbpp_task_id_476",
+    "cloverbench_array_sum_strong",
+    "diffy_ms4",
+    "diffy_s5if",
+    "mbpp_task_id_477",
+    "cloverbench_binary_search",
+    "diffy_ms5",
+    "diffy_s5lif",
+    "mbpp_task_id_572",
+    "cloverbench_cal_div",
+    "diffy_res1",
+    "diffy_sina1",
+    "mbpp_task_id_576",
+    "cloverbench_is_prime",
+    "diffy_res1o",
+    "diffy_sina2",
+    "mbpp_task_id_624",
+    "cloverbench_linear_search2",
+    "diffy_res2o",
+    "diffy_sina3",
+    "mbpp_task_id_644",
+    "cloverbench_two_sum",
+    "diffy_s12if",
+    "diffy_sina4",
+    "mbpp_task_id_70",
+    "diffy_brs1",
+    "diffy_s1if",
+    "diffy_sina5",
+    "mbpp_task_id_741",
+    "diffy_brs2",
+    "diffy_s1lif",
+    "mbpp_task_id_105",
+    "mbpp_task_id_769",
+    "diffy_brs3",
+    "diffy_s22if",
+    "mbpp_task_id_113",
+    "mbpp_task_id_798",
+    "diffy_brs4",
+    "diffy_s2if",
+    "mbpp_task_id_161",
+    "mbpp_task_id_8",
+    "diffy_brs5",
+    "diffy_s2lif",
+    "mbpp_task_id_230",
+    "mbpp_task_id_804",
+    "diffy_conda",
+    "diffy_s32if",
+    "mbpp_task_id_240",
+    "mbpp_task_id_95",
+    "diffy_condg",
+    "diffy_s3if",
+    "mbpp_task_id_399",
+]
 
 
 def get_autoverus_config_file(model_id: str) -> Path:

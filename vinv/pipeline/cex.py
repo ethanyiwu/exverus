@@ -5,8 +5,8 @@ from typing import Callable, Dict, List, Literal, Optional, Tuple
 from loguru import logger
 from veval import VerusError, VerusErrorType, VEval
 
-from vinv.gen.client import request_prompt_one
-from vinv.gen.prompt_utils import make_unified_diff, render_prompt
+from vinv.gen.client import request_conversation_one
+from vinv.gen.prompt_utils import make_unified_diff, read_compilation_repair_prompt
 from vinv.pipeline.counter_example import CounterExample, add_validate_status
 from vinv.pipeline.error_priority import sort_errors_by_priority
 from vinv.pipeline.mut_val_generalization import mut_val_cex_generalization
@@ -49,22 +49,29 @@ def cex_compilation_repair(
 
     buggy_proof_content = buggy_proof_file.read_text()
 
+    prompt_template = read_compilation_repair_prompt()
     assert (
         original_proof_file is not None
     ), "original_proof_file is required for compilation repair"
     original = original_proof_file.read_text()
-    prompt = render_prompt(
-        "iterative/compilation_repair.j2",
-        proof_content=buggy_proof_content,
-        original_proof=original,
-        diff=make_unified_diff(original, buggy_proof_content),
-        error_message=console_error_msg,
+    diff_text = make_unified_diff(original, buggy_proof_content)
+    prompt = (
+        prompt_template.replace("{proof_content}", buggy_proof_content)
+        .replace("{original_proof}", original)
+        .replace("{diff}", diff_text)
+        .replace("{error_message}", console_error_msg)
     )
 
-    system_prompt = render_prompt("pipeline/cex/compilation_repair_system.j2")
-    response = request_prompt_one(
-        prompt,
-        system=system_prompt,
+    msg_list = [
+        {
+            "role": "system",
+            "content": "You are an expert in Rust and Verus programming. You fix compilation errors without changing original executable logic or specifications.",
+        },
+        {"role": "user", "content": prompt},
+    ]
+
+    response = request_conversation_one(
+        msg_list,
         model=model,
         max_retry=5,
         temperature=1.0,
@@ -73,14 +80,7 @@ def cex_compilation_repair(
     )
 
     (try_dir / "conversation.json").write_text(
-        json.dumps(
-            [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": response},
-            ],
-            indent=2,
-        )
+        json.dumps(msg_list + [{"role": "assistant", "content": response}], indent=2)
     )
     (try_dir / "response.txt").write_text(response)
 

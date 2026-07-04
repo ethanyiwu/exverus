@@ -15,8 +15,7 @@ from loguru import logger
 from veval import VerusError
 
 # Note: We create our own simple prompt instead of using the complex IC3 prompt
-from vinv.gen.client import request_prompt_one
-from vinv.gen.prompt_utils import render_prompt
+from vinv.gen.client import request_conversation_one
 from vinv.pipeline.counter_example import CounterExample
 
 
@@ -50,9 +49,16 @@ def simple_cex_generation(
         prompt_file.write_text(prompt)
 
         # Call LLM
-        response_text = request_prompt_one(
-            prompt,
-            system=render_prompt("pipeline/simple_cex/system.j2"),
+        messages = [
+            {
+                "role": "system",
+                "content": "You are an expert in Rust/Verus verification. Find concrete counter examples that demonstrate why verification fails.",
+            },
+            {"role": "user", "content": prompt},
+        ]
+
+        response_text = request_conversation_one(
+            messages,
             model=model,
             max_retry=5,
             temperature=1.0,
@@ -99,13 +105,111 @@ def create_simple_cex_prompt(
     proof_content: str, verus_error: VerusError, console_error_msg: str, num_cex: int
 ) -> str:
     """Create a focused prompt for direct counter example generation."""
-    return render_prompt(
-        "pipeline/simple_cex/user.j2",
-        proof_content=proof_content,
-        error_type=verus_error.error.name,
-        focused_error_message=verus_error.get_text(),
-        full_error_message=console_error_msg,
-        num_cex=num_cex,
+
+    error_type = verus_error.error.name
+    focused_error_message = verus_error.get_text()
+    full_error_message = console_error_msg
+
+    # Get error-specific guidance
+    error_guidance = get_error_specific_guidance(error_type)
+
+    prompt = f"""
+# Counter Example Generation Task
+
+You are analyzing a Verus verification failure and need to find up to {num_cex} concrete counter examples that demonstrate why the proof fails.
+
+## Current Proof Code:
+```rust
+{proof_content}
+```
+
+## Targeted Verification Error:
+- **Error Type of the Targeted Error**: {error_type}
+- **Error Message of the Targeted Error**: {focused_error_message}
+
+Full verifier console output (for context):
+```
+{full_error_message}
+```
+
+## Your Task:
+{error_guidance}
+
+## Output Format:
+Provide up to {num_cex} counterexamples by REPEATING the following block for each distinct case (use different values):
+
+```
+COUNTER_EXAMPLE:
+failing_state: {{
+  // Concrete variable values that cause the failure
+  // Example: "x": 5, "y": 10, "arr_len": 3
+}}
+location: "specific location in code where failure occurs"
+explanation: "brief explanation of why this state causes failure"
+suggested_fix: "what needs to be strengthened/fixed/deleted"
+```
+
+## Requirements:
+1. **Be Concrete**: Provide specific numeric values, not ranges or symbolic expressions
+2. **Be Minimal**: Find the simplest cases that demonstrate the failure
+3. **Be Distinct**: Provide different failing states (avoid duplicates)
+4. **Be Precise**: The failing state should directly relate to the error type
+5. **Focus on Root Cause**: Identify the fundamental issue, not just symptoms
+6. **Be Disciplined**: Do not suggest modifying any execution code or pre/post conditions
+
+Vector/array representation (MANDATORY for this task):
+- When the failing state contains a Rust Vec (e.g., `arr1: Vec<i32>`), represent it in the failing_state as a Rust expression string using the vec! macro, for example:
+  - "arr1": "vec![1, 2, 3]"
+- Do NOT output Python/Z3 arrays or JSON arrays for Vecs. Always use a quoted Rust expression string `"vec![...]"` so it can be injected directly into the Rust harness.
+
+Find the counter example now:
+"""
+
+    # TODO: remove "explanation" and "suggested_fix" section for fair comparison
+
+    return prompt
+
+
+def get_error_specific_guidance(error_type: str) -> str:
+    """Get specific guidance based on the verification error type."""
+
+    guidance_map = {
+        "ArithmeticFlow": """
+Find concrete values that cause integer overflow, underflow, or division by zero.
+Look for operations like addition, subtraction, multiplication, or division that could exceed bounds.
+""",
+        "InvFailFront": """
+Find concrete values at loop entry where the invariant should hold but doesn't.
+The invariant is expected to be true when the loop starts, but your counter example should show it's false.
+""",
+        "InvFailEnd": """
+Find concrete values where the loop body preserves all conditions except the invariant.
+The loop body executes correctly but fails to maintain the invariant for the next iteration.
+""",
+        "PostCondFail": """
+Find concrete values where the function executes without errors but the postcondition is false.
+All preconditions are satisfied, the function completes, but the promised result doesn't hold.
+""",
+        "PreCondFail": """
+Find concrete values where a function call's precondition is not satisfied.
+Look for function calls where the required input conditions are violated.
+""",
+        "AssertFail": """
+Find concrete values that make an assertion statement false.
+The assertion might be incorrect or redundant. Find the concrete values that make the assertion false.
+""",
+        "PreCondFailVecLen": """
+Find concrete values that make a vector length check fail.
+Maybe the bound of the vector is missing or incorrect. Find the concrete values that make the vector length precondition fail, e.g., out of bounds.
+""",
+    }
+
+    return guidance_map.get(
+        error_type,
+        """
+Find concrete values that demonstrate why the verification fails.
+Look at the error message for clues about what condition is being violated.
+""",
     )
 
 

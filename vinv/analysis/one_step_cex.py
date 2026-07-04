@@ -109,7 +109,7 @@ def main(try_dir: str, out: Optional[str] = None, quiet: bool = False):
     - mut_val_mutants/*/batch_blocking_results.json -> per-mutant blocked counts
 
     Example:
-        uv run vinv analysis one-step-cex /path/to/try_1 --output /tmp/cex_stats.json
+        python -m vinv.analysis.one_step_cex --try_dir /path/to/try_1 --out /tmp/cex_stats.json
     """
     return analyze_try_dir(try_dir, out, quiet)
 
