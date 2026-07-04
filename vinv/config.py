@@ -73,17 +73,31 @@ TRAJECTORY_RESULT_FILE = (
 )
 
 AUTOVERUS_ALMOST_CORRECT_RESULTS_DIR = ROOT_DIR / "Benchmarks" / "one-step-dataset"
-VERUS_PATH = shutil.which("verus")
-if VERUS_PATH is None:
-    raise EnvironmentError(
-        "Verus executable not found in PATH. Please ensure Verus is installed and available."
-    )
-
 OLD_VERUS_PATH = os.environ.get("OLD_VERUS_PATH")
-if not OLD_VERUS_PATH:
-    raise EnvironmentError(
-        "OLD_VERUS_PATH environment variable is not set. Please set it to the path of the old Verus executable."
-    )
+
+
+def _configured_verus_path() -> str | None:
+    return os.environ.get("VERUS_PATH") or os.environ.get("VERUS_BIN") or shutil.which("verus")
+
+
+VERUS_PATH = _configured_verus_path()
+
+
+def resolve_verus_path(use_old_verus: bool = False) -> str:
+    if use_old_verus:
+        verus_path = os.environ.get("OLD_VERUS_PATH")
+        if not verus_path:
+            raise EnvironmentError(
+                "OLD_VERUS_PATH is not set. Set it to the old Verus executable path."
+            )
+        return verus_path
+
+    verus_path = _configured_verus_path()
+    if not verus_path:
+        raise EnvironmentError(
+            "Verus executable not found. Set VERUS_PATH, set VERUS_BIN, or add `verus` to PATH."
+        )
+    return verus_path
 
 # Mutant ranking mode configuration
 # - "cex_block": filter out non-compilable candidates, rank by blocked CEXs (default)

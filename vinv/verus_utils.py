@@ -3,17 +3,16 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import List, Tuple
 
 from loguru import logger
 from veval import EvalScore, VerusError, VEval  # type: ignore
 
-from vinv.config import OLD_VERUS_PATH, VERUS_PATH
+from vinv.config import resolve_verus_path
 from vinv.pipeline.error_priority import sort_errors_by_priority
 from vinv.utils import check_status
 
 
-def extract_and_prioritize_errors_from_log(log_file: Path) -> List[VerusError]:
+def extract_and_prioritize_errors_from_log(log_file: Path) -> list[VerusError]:
     """
     Similar to `vinv.pipeline.cex.extract_and_prioritize_errors`, but extracts error types
     from an existing Verus log file (e.g., `repaired_err.txt`) instead of running VEval.
@@ -31,7 +30,7 @@ def extract_and_prioritize_errors_from_log(log_file: Path) -> List[VerusError]:
 
     text = log_file.read_text(errors="replace")
 
-    errors: List[VerusError] = []
+    errors: list[VerusError] = []
 
     # JSON-per-line (matches VEval parsing logic)
     for line in text.splitlines():
@@ -60,15 +59,15 @@ def extract_and_prioritize_errors_from_log(log_file: Path) -> List[VerusError]:
 
 def verify_with_verus(
     proof_file: Path,
-    stdout_file: Path = None,
-    stderr_file: Path = None,
+    stdout_file: Path | None = None,
+    stderr_file: Path | None = None,
     use_old_verus: bool = False,
     max_errs: int = 5,
 ) -> bool:
     """
     Verify the proof file with Verus.
     """
-    cmd = [OLD_VERUS_PATH if use_old_verus else VERUS_PATH, str(proof_file)]
+    cmd = [resolve_verus_path(use_old_verus), str(proof_file)]
     cmd += ["--multiple-errors", str(max_errs)]
 
     result = subprocess.run(
@@ -95,7 +94,7 @@ def verify_with_verus(
 
 def get_verus_result(
     proof_file: Path, use_old_verus: bool = False
-) -> Tuple[bool, str, str]:
+) -> tuple[bool, str, str]:
     """
     Run Verus on the file.
     Returns a tuple of (success, stdout, stderr).
@@ -223,7 +222,7 @@ def get_console_error_msg_from_rustc_out(rustc_out: str) -> str:
     return "\n".join(console_error_message_list)
 
 
-def get_verus_errors_score(proof_file: Path) -> Tuple[List[VerusError], EvalScore]:
+def get_verus_errors_score(proof_file: Path) -> tuple[list[VerusError], EvalScore]:
     """
     Get the verus errors from the proof file.
     """

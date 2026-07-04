@@ -130,6 +130,8 @@ def init_generation(
         ori_code,
         temp=1.0,
     )
+    if not codes:
+        raise RuntimeError("Initial proof generation returned no code candidates.")
     init_gen_dir.mkdir(parents=True, exist_ok=True)
     code = clean_code(codes[0])
     # add #[verifier::loop_isolation(false)]
@@ -650,7 +652,20 @@ def main(
     pipeline_results_dir = PIPELINE_DEBUG_RESULTS_DIR if debug else PIPELINE_RESULTS_DIR
     pipeline_results_dir = pipeline_results_dir / model.split("/")[-1] / source
 
-    if run_all:
+    if debug:
+        target_task_ids = ["verusbench_diffy_brs1", "verusbench_mbpp_task_id_133"]
+        all_unverified_proofs = [
+            p
+            for p in get_all_vb_proofs(
+                verified_proof=False,
+                use_specified_taskids=False,
+                with_invariant=False,
+                remove_blacklisted=True,
+                source=source,
+            )
+            if p.full_id in target_task_ids
+        ]
+    elif run_all:
         all_unverified_proofs = get_all_vb_proofs(
             verified_proof=False,
             use_specified_taskids=False,
@@ -666,12 +681,6 @@ def main(
             remove_blacklisted=True,
             source=source,
         )
-
-    if debug:
-        target_task_ids = ["verusbench_diffy_brs1", "verusbench_mbpp_task_id_133"]
-        all_unverified_proofs = [
-            p for p in all_unverified_proofs if p.full_id in target_task_ids
-        ]
 
     tasks: List[Dict[str, Any]] = []
     for unverified_proof in all_unverified_proofs:
@@ -728,11 +737,13 @@ def main(
             k: str(v) if isinstance(v, Path) else v for k, v in status.items()
         }
     # sort by proof_id
+    if global_status_path.is_file():
+        existing_status = json_load(global_status_path)
+        existing_status.update(serializable_status)
+        serializable_status = existing_status
     serializable_status = dict(sorted(serializable_status.items(), key=lambda x: x[0]))
-    if not global_status_path.is_file():
-        logger.info(f"Saving global repair status to {global_status_path}")
-        with open(global_status_path, "w") as f:
-            json.dump(serializable_status, f, indent=2)
+    logger.info(f"Saving global repair status to {global_status_path}")
+    global_status_path.write_text(json.dumps(serializable_status, indent=2))
 
     # Persist the merged per-task LLM cost report for this run.
     aggregated_cost_path = (

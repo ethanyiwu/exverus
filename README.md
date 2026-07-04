@@ -1,0 +1,203 @@
+# [ICML'26] ExVerus: Verus Proof Repair via Counterexample Reasoning
+
+This repository is the artifact for the paper
+[**ExVerus: Verus Proof Repair via Counterexample Reasoning**](https://openreview.net/forum?id=FNDkXA0OUJ). The arXiv preprint is available
+[here](https://arxiv.org/abs/2603.25810).
+
+ExVerus repairs failing [Verus](https://github.com/verus-lang/verus) proofs by
+generating source-level counterexamples, validating them when possible, and
+using them to guide mutation-based proof repair. The artifact contains the
+Python repair pipeline, Rust/Verus-Syn helper tools, benchmark copies, prompts,
+and analysis scripts used by the paper experiments.
+
+> [!IMPORTANT]
+> Full paper-scale reproduction requires LLM API calls, Verus, Rust tooling, and
+> substantial compute. The commands below focus on the core experiment modes in
+> small/debug form rather than launching the full sweep.
+
+## Repository Contents
+
+| Path | Contents |
+| --- | --- |
+| `vinv/` | ExVerus pipeline, LLM clients, prompts, analysis utilities |
+| `tool/rs/convert/` | Rust helpers for loop extraction and CEX instrumentation |
+| `cleaned-verusbench/` | Cleaned VerusBench tasks |
+| `Benchmarks/` | Additional paper benchmarks: DafnyBench, HumanEval, LCBench, ObfsBench, etc. |
+| `verus-proof-synthesis/` | AutoVerus support code reused for initial proof generation and Verus utilities |
+| `scripts/` | Historical batch scripts used for large experiment sweeps |
+| `results/` | Generated outputs, repair traces, status files, and cost reports |
+
+## Paper Experiment Map
+
+The main paper experiments correspond to these artifact modes:
+
+| Paper result | Artifact mode |
+| --- | --- |
+| Main ExVerus repair | `vinv pipeline repair --cex-generation-strategy z3 --cex-generalization-strategy mut_val` |
+| Iterative refinement baseline | `vinv pipeline repair --ablation` |
+| Direct generalization ablation | `--cex-generalization-strategy simple` |
+| VerusBench | `--source CLEANED_VB` |
+| DafnyBench + LCBench + HumanEval | `--source THREEBENCH` |
+| Additional benchmarks, including ObfsBench | `--source ADDITIONAL` |
+
+The paper evaluates five model families: DeepSeek-V3.1, GPT-4o, Qwen3-Coder,
+o4-mini, and Claude Sonnet 4.5. The default paper repair budget is 10 repair
+attempts and 10 counterexamples.
+
+## Setup
+
+Install Python dependencies from this directory:
+
+```bash
+uv sync
+```
+
+Make Verus available and source the local environment setup:
+
+```bash
+# Either put `verus` on PATH, or set one of these:
+export VERUS_PATH=/path/to/verus
+# export VERUS_BIN=/path/to/verus
+source ./setup.sh
+```
+
+The paper implementation used Verus `0.2025.07.12.0b6f3cb`. The Rust helper
+tools in `tool/rs/convert` are built automatically on first use and require
+`cargo`.
+
+Configure at least one LLM provider key:
+
+```bash
+export OPENAI_API_KEY=...
+export OPENROUTER_API_KEY=...
+export ANTHROPIC_API_KEY=...
+```
+
+`OLD_VERUS_PATH` is optional and only needed by commands that explicitly request
+the old Verus executable.
+
+Sanity-check the local setup:
+
+```bash
+uv run vinv check
+uv run vinv check --strict
+```
+
+If this reports that Verus is missing Rust toolchain `1.88.0`, install it with:
+
+```bash
+rustup install 1.88.0-x86_64-unknown-linux-gnu
+```
+
+If `uv` cannot write to its default cache on a restricted machine, use a local
+or temporary cache:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run vinv check
+```
+
+## Core Experiment Commands
+
+### 1. Main ExVerus Repair
+
+This is the core paper pipeline: Z3Py counterexample generation plus
+mutation/validation repair. The command below uses `--debug` to run a small
+VerusBench subset.
+
+```bash
+uv run vinv pipeline repair \
+  --model gpt-4o \
+  --source CLEANED_VB \
+  --cex-generation-strategy z3 \
+  --cex-generalization-strategy mut_val \
+  --num-cex 10 \
+  --max-repair-attempts 10 \
+  --debug \
+  --num-workers 1
+```
+
+### 2. Iterative Refinement Baseline
+
+This mode repairs from verifier feedback without the ExVerus CEX-guided mutation
+pipeline.
+
+```bash
+uv run vinv pipeline repair \
+  --model gpt-4o \
+  --source CLEANED_VB \
+  --ablation \
+  --max-repair-attempts 10 \
+  --debug \
+  --num-workers 1
+```
+
+### 3. Direct Generalization Ablation
+
+This keeps counterexample generation but uses direct/simple generalization
+instead of the `mut_val` repair strategy. It is the closest CLI-level ablation
+to the paper's no-mutator comparison.
+
+```bash
+uv run vinv pipeline repair \
+  --model gpt-4o \
+  --source CLEANED_VB \
+  --cex-generation-strategy z3 \
+  --cex-generalization-strategy simple \
+  --num-cex 10 \
+  --max-repair-attempts 10 \
+  --debug \
+  --num-workers 1
+```
+
+## Useful Single-File Helper
+
+To test the Rust loop-harness conversion helper directly:
+
+```bash
+uv run vinv assume convert path/to/input.rs --out /tmp/assume
+uv run vinv assume convert path/to/input.rs --out /tmp/assert --use-assert
+```
+
+## Outputs
+
+Debug runs write under `results/pipeline_debug/<model>/<source>/`. Non-debug
+runs write under `results/pipeline/<model>/<source>/`.
+
+Each task directory may contain:
+
+- `init_gen/`: initial proof generation output and verification status
+- `cex_repair_<generation>_<generalization>_<num_cex>/`: CEX-guided repair trace
+- `repair_status_*.json`: per-task repair result
+- `llm_cost_report_*.json`: per-task token and cost accounting
+- `aggregated_llm_cost_*.json`: merged cost report for the run
+
+## Full Paper Reproduction
+
+The full paper tables require running the same modes across all benchmark
+sources, model families, and ablations. The historical sweep scripts in
+`scripts/` show the exact large-run structure, but they are intentionally not
+listed here as quick-start commands because they launch expensive batch LLM
+experiments.
+
+For paper-scale runs, use the core modes above and vary:
+
+- `--model`: `deepseek/deepseek-chat-v3.1`, `gpt-4o`, `qwen/qwen3-coder`,
+  `o4-mini`, or a Claude Sonnet model configured in the LLM client
+- `--source`: `CLEANED_VB` or `ADDITIONAL`
+- `--cex-generalization-strategy`: `mut_val` for ExVerus, `simple` for the
+  direct generalization ablation
+- `--num-cex`: `10` for the main setting, `1` for the CEX-count sensitivity
+
+## Citation
+
+If you use this artifact, please cite:
+
+```bibtex
+@inproceedings{yang2026exverus,
+  title = {ExVerus: Verus Proof Repair via Counterexample Reasoning},
+  author = {Yang, Jun and Sun, Yuechun and Wu, Yi and Caridad, Rodrigo and Yuan, Yongwei and Yao, Jianan and Lu, Shan and Pei, Kexin},
+  year = {2026},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  url = {https://openreview.net/forum?id=FNDkXA0OUJ}
+}
+```

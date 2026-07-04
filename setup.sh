@@ -44,9 +44,15 @@ require_verus() {
         return 1
     fi
 
+    if [[ -n "${VERUS_BIN-}" ]]; then
+        [[ -x "$VERUS_BIN" ]] && export VERUS_PATH="$VERUS_BIN" && return 0
+        fail_setup "VERUS_BIN is not executable: $VERUS_BIN"
+        return 1
+    fi
+
     VERUS_PATH="$(command -v verus 2>/dev/null || true)"
     [[ -n "$VERUS_PATH" ]] && export VERUS_PATH && return 0
-    fail_setup $'Verus executable not found.\nSet VERUS_PATH=/path/to/verus or add `verus` to PATH before sourcing ./setup.sh.'
+    fail_setup $'Verus executable not found.\nSet VERUS_PATH=/path/to/verus, set VERUS_BIN=/path/to/verus, or add `verus` to PATH before sourcing ./setup.sh.'
     return 1
 }
 
