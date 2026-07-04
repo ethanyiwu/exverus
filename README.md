@@ -193,11 +193,12 @@ For paper-scale runs, use the core modes above and vary:
 If you use this artifact, please cite:
 
 ```bibtex
-@inproceedings{yang2026exverus,
-  title = {ExVerus: Verus Proof Repair via Counterexample Reasoning},
-  author = {Yang, Jun and Sun, Yuechun and Wu, Yi and Caridad, Rodrigo and Yuan, Yongwei and Yao, Jianan and Lu, Shan and Pei, Kexin},
-  year = {2026},
-  booktitle = {International Conference on Machine Learning (ICML)},
-  url = {https://openreview.net/forum?id=FNDkXA0OUJ}
+@inproceedings{
+yang2026exverus,
+title={ExVerus: Verus Proof Repair via Counterexample Reasoning},
+author={Jun Yang and Yuechun Sun and Yi Wu and Rodrigo Caridad and Yongwei Yuan and Jianan Yao and Shan Lu and Kexin Pei},
+booktitle={Forty-third International Conference on Machine Learning},
+year={2026},
+url={https://openreview.net/forum?id=FNDkXA0OUJ}
 }
 ```
