@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 from pathlib import Path
@@ -21,6 +22,7 @@ CF_BENCHMARK_ROOT_DIR = ROOT_DIR / "codeforces_problems"
 AUTOVERUS_RESULTS_DIR = RESULTS_ROOT_DIR / "autoverus_cleaned_vb"
 INV_INJECT_RESULTS_DIR = RESULTS_ROOT_DIR / "inv_inject"
 INV_INJECT_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+AUTOVERUS_GENERATED_CONFIG_DIR = RESULTS_ROOT_DIR / "autoverus_configs"
 
 # for trajectory result parsing
 AUTOVERUS_TRAJECTORY_RESULTS_DIR = Path(
@@ -374,12 +376,87 @@ def get_autoverus_config_file(model_id: str) -> Path:
     Returns:
         config_file (Path): The path to the Autoverus configuration file.
     """
-    config_dir = AUTOVERUS_TOOL_DIR / "code"
-    config_file = config_dir / f"config_{_simplify_model_id(model_id)}.json"
-    if not config_file.is_file():
-        raise FileNotFoundError(f"Configuration file not found: {config_file}")
+    override = os.environ.get("AUTOVERUS_CONFIG_FILE")
+    if override:
+        config_file = Path(override).expanduser()
+        if not config_file.is_file():
+            raise FileNotFoundError(f"Configuration file not found: {config_file}")
+        return config_file
 
+    api_key_env, api_base, generation_model = _autoverus_model_settings(model_id)
+    if api_key := os.environ.get(api_key_env):
+        return _write_autoverus_config(
+            model_id,
+            api_key,
+            api_base,
+            generation_model,
+        )
+
+    config_file = (
+        AUTOVERUS_TOOL_DIR / "code" / f"config_{_simplify_model_id(model_id)}.json"
+    )
+    if config_file.is_file():
+        return config_file
+
+    raise EnvironmentError(
+        f"{api_key_env} is not set and no AutoVerus config was found at {config_file}. "
+        "Set the key or set AUTOVERUS_CONFIG_FILE."
+    )
+
+
+def _write_autoverus_config(
+    model_id: str,
+    api_key: str,
+    api_base: str,
+    generation_model: str,
+) -> Path:
+    AUTOVERUS_GENERATED_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    config_file = AUTOVERUS_GENERATED_CONFIG_DIR / (
+        f"config_{_simplify_model_id(model_id)}.json"
+    )
+    config_file.write_text(
+        json.dumps(
+            {
+                "use_openai": True,
+                "aoai_api_base": [api_base],
+                "aoai_api_version": generation_model,
+                "aoai_api_key": [api_key],
+                "aoai_max_retries": 5,
+                "max_token": 4096,
+                "aoai_generation_model": generation_model,
+                "aoai_debug_model": generation_model,
+                "verus_path": resolve_verus_path(),
+                "example_path": str(AUTOVERUS_TOOL_DIR / "code" / "examples"),
+                "lemma_path": str(AUTOVERUS_TOOL_DIR / "code" / "lemmas"),
+                "util_path": str(AUTOVERUS_TOOL_DIR / "utils"),
+            },
+            indent=4,
+        )
+        + "\n"
+    )
+    config_file.chmod(0o600)
     return config_file
+
+
+def _autoverus_model_settings(model_id: str) -> tuple[str, str, str]:
+    if model_id.startswith("anthropic/claude-"):
+        return "ANTHROPIC_API_KEY", "https://api.anthropic.com", model_id.removeprefix(
+            "anthropic/"
+        )
+    if model_id.startswith("claude-"):
+        return "ANTHROPIC_API_KEY", "https://api.anthropic.com", model_id
+    if model_id.startswith("gpt") or model_id.startswith("o"):
+        return "OPENAI_API_KEY", "https://api.openai.com/v1", model_id
+
+    return (
+        "OPENROUTER_API_KEY",
+        "https://openrouter.ai/api/v1",
+        {
+            "deepseek-chat": "deepseek/deepseek-chat-v3.1",
+            "deepseek-chat-free": "deepseek/deepseek-chat-v3.1:free",
+            "qwen3-coder": "qwen/qwen3-coder",
+        }.get(model_id, model_id),
+    )
 
 
 def _simplify_model_id(model_id: str) -> str:

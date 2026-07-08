@@ -46,9 +46,11 @@ attempts and 10 counterexamples.
 
 ## Setup
 
-Install Python dependencies from this directory:
+Initialize the AutoVerus dependency and install Python dependencies from this
+directory:
 
 ```bash
+git submodule update --init --recursive
 uv sync
 ```
 
@@ -63,7 +65,10 @@ source ./setup.sh
 
 The paper implementation used Verus `0.2025.07.12.0b6f3cb`. The Rust helper
 tools in `tool/rs/convert` are built automatically on first use and require
-`cargo`.
+`cargo`. `setup.sh` also exports `LYNETTE_PATH` to the bundled AutoVerus
+Lynette binary path; build it with
+`cargo build --manifest-path verus-proof-synthesis/utils/lynette/source/Cargo.toml`
+if a command needs the standalone binary.
 
 Configure at least one LLM provider key:
 
@@ -72,6 +77,11 @@ export OPENAI_API_KEY=...
 export OPENROUTER_API_KEY=...
 export ANTHROPIC_API_KEY=...
 ```
+
+ExVerus generates the AutoVerus first-stage configuration under
+`results/autoverus_configs/` from these environment variables and the local
+`verus-proof-synthesis` submodule paths. To use a hand-written AutoVerus config
+instead, set `AUTOVERUS_CONFIG_FILE=/path/to/config_<model>.json`.
 
 `OLD_VERUS_PATH` is optional and only needed by commands that explicitly request
 the old Verus executable.

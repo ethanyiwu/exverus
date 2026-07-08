@@ -28,8 +28,6 @@ verusage_exp/test_*
 verusage_exp/copilot_app_exp/
 verusage/
 
-verus-proof-synthesis/
-
 cases/
 paper/
 cost/

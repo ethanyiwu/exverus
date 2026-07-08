@@ -1,0 +1,3 @@
+[submodule "verus-proof-synthesis"]
+	path = verus-proof-synthesis
+	url = git@github.com:claudeyj/verus-proof-synthesis.git

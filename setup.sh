@@ -56,6 +56,12 @@ require_verus() {
     return 1
 }
 
+require_autoverus() {
+    [[ -d "$ROOT_DIR/verus-proof-synthesis/code" ]] && return 0
+    fail_setup $'verus-proof-synthesis submodule is missing.\nRun: git submodule update --init --recursive'
+    return 1
+}
+
 if ! is_sourced; then
     fail_setup $'Run this script with:\n  source ./setup.sh [--sync]'
 fi
@@ -71,6 +77,8 @@ case "${1-}" in
         ;;
 esac
 
+require_autoverus || return 1
+
 prepend_pythonpath "$ROOT_DIR"
 prepend_pythonpath "$ROOT_DIR/verus-proof-synthesis/code"
 
@@ -82,8 +90,10 @@ fi
 require_verus || return 1
 
 export VINV_ROOT="$ROOT_DIR"
+export LYNETTE_PATH="${LYNETTE_PATH:-$ROOT_DIR/verus-proof-synthesis/utils/lynette/source/target/debug/lynette}"
 
 echo "Environment ready."
 echo "ROOT_DIR=$ROOT_DIR"
 echo "PYTHONPATH=$PYTHONPATH"
 echo "VERUS_PATH=$VERUS_PATH"
+echo "LYNETTE_PATH=$LYNETTE_PATH"
